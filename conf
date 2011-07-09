@@ -1,0 +1,10 @@
+# web-change-checker
+# 
+# configuration file, contains one site to watch on each line
+# format of a line is:
+#   site;striphtml;email;email;...
+#
+# where
+#   'site' is a valid URL to be watched for updates
+#   'striphtml' determines (if "yes") that common html entities should be replaced by ascii
+#   'email' is any valid mail adress to be notified on change
