@@ -1,0 +1,147 @@
+#!/bin/bash
+
+# tag used in output
+TAG="web change checker2"
+
+# config file path
+CONF="conf"
+
+# persistent directory prefix
+PER_DIR="/var/tmp"
+
+# make verbose output - cron will spam you :p
+DEBUG="true"
+
+sendMail() {
+	# $1 file
+	# $2 subject
+	# $3 address
+	
+#	cat $1 | mail -s "$2" $3
+	mutt -s "$2" $3 < $1
+}
+
+cleanup() {
+	if [ -e $TMP ]; then rm $TMP; fi
+	if [ -e $TMP_MD5 ]; then rm $TMP_MD5; fi
+	if [ -e $TMP_SITE ]; then rm $TMP_SITE; fi
+	if [ -e $TMP_DIFF ]; then rm $TMP_DIFF; fi
+	if [ -e $TMP_DIFF2 ]; then rm $TMP_DIFF2; fi
+	if [ -e $TMP_MAIL ]; then rm $TMP_MAIL; fi
+}
+
+copyOld() {
+	mv $TMP_MD5 $MD5_FILE
+	mv $TMP_SITE $SITE_FILE
+}
+
+stripeHTML() {
+	# $1 input file
+	# $2 output file
+	
+	# get charset, may be empty, case unspecified
+	enc="$(cat $1 | grep -Eio '<meta.*?content-type.*?>' | sed -e 's/<meta.*charset=\([a-zA-Z0-9-]*\).*/\1/g')"
+	# to lower case
+	enc="$(echo $enc | tr '[:upper:]' '[:lower:]')"
+
+	if [ "$enc" == "" ]; then
+		# assume system default is utf-8 :p
+		enc="utf-8"
+	fi
+
+	if [ "$DEBUG" == "true" ]; then echo "  charset: $enc"; fi
+	
+	# iconv
+	iconv -f=$enc -t="utf-8" $1 > $2
+
+	# inplace sed with non-greedy <tag> eater
+	sed -i -e 's/<[^>]*>/ /g;' $2
+	# common entity converter
+	sed -i -e 's/\&lt\;/</g;s/\&gt\;/>/g;s/\&auml\;/ä/g;s/\&ouml\;/ö/g;s/\&uuml\;/ü/g;s/\&nbsp\;/ /g' $2
+	
+}
+
+# while iterating over all lines from $CONF file
+# filter out #comment lines
+egrep "^[^#]" $CONF | while read line; do
+#	echo "LINE: $line"
+	
+	# read site
+	site="$(echo $line | cut -d';' -f1)"
+	if [ "$DEBUG" == "true" ]; then echo "site: $site"; fi
+	
+	# read striphtml
+	striphtml="$(echo $line | cut -d';' -f2)"
+	if [ "$DEBUG" == "true" ]; then echo "  striphtml: $striphtml"; fi
+	
+	# read all fields since index 3 and replace ; with newline
+	emails="$(echo $line | cut -d';' -f3- | tr ';' '\n')"
+	
+	# create md5 tag for $site
+	tname="$(echo $site | md5sum -)"
+	tname=${tname:0:8}
+	if [ "$DEBUG" == "true" ]; then echo "  tname: $tname"; fi
+	
+	# create url tag for $site
+	tsite="$(echo $site | sed -e 's/[^/]*\/\/\([^@]*@\)\?\([^:/]*\).*/\2/')"
+	if [ "$DEBUG" == "true" ]; then echo "  tsite: $tsite"; fi
+
+	# persistent files
+	MD5_FILE="$PER_DIR/$tname.md5"
+	SITE_FILE="$PER_DIR/$tname.site"
+
+	# temp files	
+	TMP=`mktemp`
+	TMP_MD5="$TMP.md5"
+	TMP_SITE="$TMP.site"
+	TMP_DIFF="$TMP.diff"
+	TMP_DIFF2="$TMP.diff2"
+	TMP_MAIL="$TMP.mail"
+	
+	# retrieve contents
+	wget -q -O $TMP_SITE $site
+	
+	# calc md5
+	echo $(cat $TMP_SITE | md5sum) > $TMP_MD5
+	
+	# if there is no compare-point:
+	if [ ! -e $MD5_FILE ]; then
+		copyOld
+		cleanup
+		continue
+	fi
+	
+	old_md5=$(cat $MD5_FILE)
+	new_md5=$(cat $TMP_MD5)
+	
+	if [ "$old_md5" != "$new_md5" ]; then
+		LOLD="OLD ($(stat -c %y $MD5_FILE))"
+		LNEW="NEW ($(stat -c %y $TMP_MD5))"
+		
+		echo "Change at $site - diff follows:" >> $TMP_MAIL
+		echo "" >> $TMP_MAIL
+		
+		/usr/bin/diff -U 1 --label "$LOLD" --label "$LNEW" $SITE_FILE $TMP_SITE > $TMP_DIFF
+		if [ "$striphtml" == "yes" ]; then
+			stripeHTML $TMP_DIFF $TMP_DIFF2
+			cat $TMP_DIFF2 > $TMP_DIFF
+		fi
+		cat $TMP_DIFF >> $TMP_MAIL
+		
+		if [ "$DEBUG" == "true" ]; then echo "  Change detected:"; fi
+		for addr in $emails; do
+			if [ "$DEBUG" == "true" ]; then echo "    addr: $addr"; fi
+			sendMail $TMP_MAIL "[$TAG] $tsite changed" $addr
+		done
+		
+		logger -t "$TAG" "Change at $site (tag $tname) detected"
+		
+		# replace the old files
+		copyOld
+	fi
+	
+	# cleanup
+	cleanup
+done
+
+exit 0
