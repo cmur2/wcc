@@ -48,7 +48,7 @@ def sendmail(fr, to, title, msg):
     
 
 def checkforupdate(url):
-    """checks wether website has changed using sha1 hash stored
+    """checks whether website has changed using sha1 hash stored
     in /var/tmp/wcc.tmp. Notification using sendmail()."""
     
     data = urlopen(url).read()  
