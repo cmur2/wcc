@@ -7,4 +7,7 @@ The web-change-checker bash script highly relies on **up to date Linux tools** a
 
 ## Usage
 
-The web-change-checker bash script can be either invoked by hand or automatic via cron on any server environment.
+The web-change-checker bash script can be either invoked by hand or automatically via *cron* on a server environment.
+
+The script loads a given URL with *wget* and calls *md5sum* upon it.
+When detecting changes it tries to send an email via *mutt* (you can use *mailx* but mutt has fewer charset encoding issues) to the specified adresses and records the event with *logger* in syslog.
