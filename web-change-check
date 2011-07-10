@@ -78,7 +78,7 @@ egrep "^[^#]" $CONF | while read line; do
 	emails="$(echo $line | cut -d';' -f3- | tr ';' '\n')"
 	
 	# create md5 tag for $site
-	tname="$(echo $site | md5sum -)"
+	tname="$(echo -n $site | md5sum -)"
 	tname=${tname:0:8}
 	if [ "$DEBUG" == "true" ]; then echo "  tname: $tname"; fi
 	
