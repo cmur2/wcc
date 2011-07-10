@@ -8,7 +8,6 @@ sys.setdefaultencoding('utf-8') # we always need failsafe utf-8, in some way
 import os
 import re
 import hashlib
-import subprocess
 
 
 # tag used in output
@@ -24,38 +23,29 @@ PER_DIR = "/var/tmp"
 DEBUG = "true"
 
 
-
 def main():
-    # read all lines
-    f = open(CONF, 'r')
-    lines = [line.rstrip() for line in f.readlines()]
-    f.close()
     
-    for line in lines:
-        if not re.match('^[^#:space:]', line):
+    for line in open(CONF, 'r'):
+        line = line.strip()
+        if line.find('#') > -1 or line.find(' ') > -1:
             continue
         
-        #print line
-        
         args = [arg for arg in line.split(';')]
-        
-        site = args.pop(0)
+        site, striphtml = args[0:2]
         print "site: %s" % site
-        
-        striphtml = args.pop(0)
         print "  striphtml: %s" % striphtml
         
-        emails = args
+        emails = args[2:]
         
-        tname = hashlib.md5(site).hexdigest()[0:8]
+        tname = hashlib.sha1(site).hexdigest()[0:8]
         print "  tname: %s" % tname
         
-        tsite = re.sub(r'[^/]*\/\/([^@]*@)?([^:/]*).*', r'\2', site)
+        tsite = re.sub(r'[^/]*\/\/([^@]*@)?([^:/]*).*', r'\2', site) #WTF?
         print "  tsite: %s" % tsite
         
-         # persistent files
-        MD5_FILE = "%s/%s.md5" % (PER_DIR, tname)
-        SITE_FILE = "%s/%s.site" % (PER_DIR, tname)
+        # persistent files
+        MD5_FILE = os.path.join(PER_DIR, tname+'.md5')
+        SITE_FILE = os.path.join(PER_DIR, tname+'.site')
         
         # temp files
         #TMP = ""
