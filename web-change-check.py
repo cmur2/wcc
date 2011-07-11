@@ -10,6 +10,7 @@ import re
 import hashlib
 import urllib
 import datetime
+import difflib
 
 
 # tag used in output
@@ -80,11 +81,21 @@ def main():
         old_md5 = inmd5.readline().strip()
         inmd5.close()
         
+        indata = open(SITE_FILE, 'r')
+        old_data = indata.readlines()
+        indata.close()
+        
         #print old_md5+" "+new_md5
         
         if old_md5 != new_md5:
             LOLD = "OLD ("+datetime.datetime.fromtimestamp(os.path.getmtime(MD5_FILE)).strftime('%Y-%m-%d %H:%M:%S')+")"
             LNEW = "NEW ("+datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')+")"
+            
+            diff = difflib.unified_diff(old_data, new_data.splitlines(True), "OLD", "NEW", datetime.datetime.fromtimestamp(os.path.getmtime(MD5_FILE)).strftime('%Y-%m-%d %H:%M:%S'), datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+            
+            for line in diff:
+                sys.stdout.write(line)
+            
             
             
             # do diff
