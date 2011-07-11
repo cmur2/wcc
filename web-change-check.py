@@ -9,6 +9,7 @@ import os
 import re
 import hashlib
 import urllib
+import datetime
 
 
 # tag used in output
@@ -81,8 +82,14 @@ def main():
         
         #print old_md5+" "+new_md5
         
-        
-        #print data
+        if old_md5 != new_md5:
+            LOLD = "OLD ("+datetime.datetime.fromtimestamp(os.path.getmtime(MD5_FILE)).strftime('%Y-%m-%d %H:%M:%S')+")"
+            LNEW = "NEW ("+datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')+")"
+            
+            
+            # do diff
+            # do mail
+            # do update
         
         
         #for addr in emails:
