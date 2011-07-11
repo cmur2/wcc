@@ -15,7 +15,7 @@ import urllib
 TAG = "web change checker2"
 
 # config file path
-CONF = "my.conf"
+CONF = "conf"
 
 # persistent directory prefix
 PER_DIR = "/var/tmp"
@@ -24,7 +24,7 @@ PER_DIR = "/var/tmp"
 TMP_DIR = "/tmp"
 
 # make verbose output - cron will spam you :p
-DEBUG = "true"
+DEBUG = True
 
 
 
@@ -40,16 +40,16 @@ def main():
         args = [arg for arg in line.split(';')]
         
         site, striphtml = args[0:2]
-        print "site: %s" % site
-        print "  striphtml: %s" % striphtml
+        if DEBUG: print "site: %s" % site
+        if DEBUG: print "  striphtml: %s" % striphtml
         
         emails = args[2:]
         
         tname = hashlib.md5(site).hexdigest()[0:8]
-        print "  tname: %s" % tname
+        if DEBUG: print "  tname: %s" % tname
         
         tsite = re.sub(r'[^/]*\/\/([^@]*@)?([^:/]*).*', r'\2', site)
-        print "  tsite: %s" % tsite
+        if DEBUG: print "  tsite: %s" % tsite
         
         # persistent files
         MD5_FILE = os.path.join(PER_DIR, tname+'.md5')
@@ -91,4 +91,12 @@ def main():
         
 
 if __name__ == '__main__':
+    from optparse import OptionParser
+    parser = OptionParser()
+    parser.add_option("-v", "--verbose", action="store_true",
+                dest="verbose", default=True, help="prints all debug messages")
+                
+    (options, args) = parser.parse_args()
+    DEBUG = options.verbose
+    
     main()
