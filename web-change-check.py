@@ -11,6 +11,9 @@ import hashlib
 import urllib
 import datetime
 import difflib
+import smtplib
+
+from email.mime.text import MIMEText
 
 
 # tag used in output
@@ -28,7 +31,22 @@ TMP_DIR = "/tmp/wcc"
 # make verbose output - cron will spam you :p
 DEBUG = True
 
+SERVER = "localhost"
+PORT = 25
 
+
+def sendMail(msg, subject, to):
+    fr = "chrnicolai@gmail.com"
+
+    text = MIMEText(msg)
+    text['Subject'] = subject
+    text['From'] = fr
+    text['To'] = to
+    
+    s = smtplib.SMTP(SERVER, PORT)
+    s.sendmail(fr, [to], text.as_string())
+    s.quit()
+    
 
 def main():
     # read all lines
@@ -60,9 +78,9 @@ def main():
         # temp files
         #TMP_MD5 = os.path.join(TMP_DIR, tname+'.md5')
         #TMP_SITE = os.path.join(TMP_DIR, tname+'.site')
-        TMP_DIFF = os.path.join(TMP_DIR, tname+'.diff')
-        TMP_DIFF2 = os.path.join(TMP_DIR, tname+'.diff2')
-        TMP_MAIL = os.path.join(TMP_DIR, tname+'.mail')
+        #TMP_DIFF = os.path.join(TMP_DIR, tname+'.diff')
+        #TMP_DIFF2 = os.path.join(TMP_DIR, tname+'.diff2')
+        #TMP_MAIL = os.path.join(TMP_DIR, tname+'.mail')
         
         new_data = urllib.urlopen(site).read()
         new_md5 = hashlib.md5(new_data).hexdigest()
@@ -88,24 +106,44 @@ def main():
         #print old_md5+" "+new_md5
         
         if old_md5 != new_md5:
-            LOLD = "OLD ("+datetime.datetime.fromtimestamp(os.path.getmtime(MD5_FILE)).strftime('%Y-%m-%d %H:%M:%S')+")"
-            LNEW = "NEW ("+datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')+")"
+            if DEBUG: print "  Change detected:"
             
-            diff = difflib.unified_diff(old_data, new_data.splitlines(True), "OLD", "NEW", datetime.datetime.fromtimestamp(os.path.getmtime(MD5_FILE)).strftime('%Y-%m-%d %H:%M:%S'), datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+            # content of email
+            content = "Change at %s - diff follows:\n\n" % site
             
-            for line in diff:
-                sys.stdout.write(line)
+            diffGen = difflib.unified_diff(
+                old_data,
+                new_data.splitlines(True),
+                "OLD",
+                "NEW",
+                '('+datetime.datetime.fromtimestamp(os.path.getmtime(MD5_FILE)).strftime('%Y-%m-%d %H:%M:%S')+')',
+                '('+datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')+')',
+                1)
             
+            diff = ""
+            for line in diffGen:
+                diff += line
             
+            #if striphtml == "yes":
+            #
             
-            # do diff
-            # do mail
+            content += diff
+                        
+            for addr in emails:
+                if DEBUG: print "    addr: %s" % addr
+                sendMail(content, "[%s] %s changed" % (TAG, tsite), addr)
+                
+            # syslog connection
+            #logger -t "$TAG" "Change at $site (tag $tname) detected"
+            
             # do update
-        
-        
-        #for addr in emails:
-        #    print "  addr: %s" % (addr)
-        
+            outmd5 = open(MD5_FILE, 'w')
+            outmd5.write(new_md5+'\n')
+            outmd5.close()
+            
+            outdata = open(SITE_FILE, 'w')
+            outdata.write(new_data+'\n')
+            outdata.close()
         
 
 if __name__ == '__main__':
