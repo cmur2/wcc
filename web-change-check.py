@@ -8,6 +8,7 @@ sys.setdefaultencoding('utf-8') # we always need failsafe utf-8, in some way
 import os
 import re
 import hashlib
+import urllib
 
 
 # tag used in output
@@ -55,11 +56,33 @@ def main():
         SITE_FILE = os.path.join(PER_DIR, tname+'.site')
         
         # temp files
-        TMP_MD5 = os.path.join(TMP_DIR, tname+'.md5')
-        TMP_SITE = os.path.join(TMP_DIR, tname+'.site')
+        #TMP_MD5 = os.path.join(TMP_DIR, tname+'.md5')
+        #TMP_SITE = os.path.join(TMP_DIR, tname+'.site')
         TMP_DIFF = os.path.join(TMP_DIR, tname+'.diff')
         TMP_DIFF2 = os.path.join(TMP_DIR, tname+'.diff2')
         TMP_MAIL = os.path.join(TMP_DIR, tname+'.mail')
+        
+        new_data = urllib.urlopen(site).read()
+        new_md5 = hashlib.md5(new_data).hexdigest()
+        
+        if not os.path.exists(MD5_FILE):
+            outmd5 = open(MD5_FILE, 'w')
+            outmd5.write(new_md5+'\n')
+            outmd5.close()
+            
+            outdata = open(SITE_FILE, 'w')
+            outdata.write(new_data+'\n')
+            outdata.close()
+            continue
+            
+        inmd5 = open(MD5_FILE, 'r')
+        old_md5 = inmd5.readline().strip()
+        inmd5.close()
+        
+        #print old_md5+" "+new_md5
+        
+        
+        #print data
         
         
         #for addr in emails:
