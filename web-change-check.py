@@ -20,10 +20,10 @@ TAG = "web change checker2"
 CONF = "conf"
 
 # persistent directory prefix
-PER_DIR = "/var/tmp"
+PER_DIR = "/var/tmp/wcc"
 
 # temp directory prefix
-TMP_DIR = "/tmp"
+TMP_DIR = "/tmp/wcc"
 
 # make verbose output - cron will spam you :p
 DEBUG = True
