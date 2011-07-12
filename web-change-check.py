@@ -45,7 +45,10 @@ def sendMail(msg, subject, to):
     s.starttls()
     s.sendmail(fr, [to], text.as_string())
     s.quit()
-    
+
+def stripHTML(orig):
+    # TODO
+    return orig
 
 def main():
     # read all lines
@@ -115,8 +118,8 @@ def main():
             
             diff = ''.join([line for line in diffGen])
             
-            #if striphtml == "yes":
-            #
+            if striphtml == "yes":
+                diff = stripHTML(diff)
             
             content += diff
                         
