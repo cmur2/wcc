@@ -25,9 +25,6 @@ CONF = "conf"
 # persistent directory prefix
 PER_DIR = "/var/tmp/wcc"
 
-# temp directory prefix
-TMP_DIR = "/tmp/wcc"
-
 # make verbose output - cron will spam you :p
 DEBUG = True
 
@@ -76,13 +73,6 @@ def main():
         # persistent files
         MD5_FILE = os.path.join(PER_DIR, tname+'.md5')
         SITE_FILE = os.path.join(PER_DIR, tname+'.site')
-        
-        # temp files
-        #TMP_MD5 = os.path.join(TMP_DIR, tname+'.md5')
-        #TMP_SITE = os.path.join(TMP_DIR, tname+'.site')
-        #TMP_DIFF = os.path.join(TMP_DIR, tname+'.diff')
-        #TMP_DIFF2 = os.path.join(TMP_DIR, tname+'.diff2')
-        #TMP_MAIL = os.path.join(TMP_DIR, tname+'.mail')
         
         new_data = urllib.urlopen(site).read()
         new_md5 = hashlib.md5(new_data).hexdigest()
