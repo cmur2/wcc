@@ -37,8 +37,11 @@ FROM = "user@localhost"
 class Site:
     def __init__(self, url, striphtml, emails):
         self.url = url
-        self.striphtml = striphtml
+        self.striphtml = (striphtml == "yes") # parse "yes" to True, else False
         self.emails = emails
+        
+        self.id = hashlib.md5(url).hexdigest()[0:8]
+        self.shorturl = re.sub(r'[^/]*//([^@]*@)?([^:/]*).*', r'\2', url)
 
 
 
@@ -54,6 +57,7 @@ def sendMail(msg, subject, to):
     s.quit()
 
 def stripHTML(orig):
+    # delete all <tags>
     new = re.sub('<[^>]*>', ' ', orig)
     
     def conv(m):
@@ -74,28 +78,22 @@ def main():
         if not re.match(r'^[^#]', line):
             continue
         
-        #print line
-        
         args = [arg for arg in line.split(';')]
         
-        url, striphtml = args[0:2]
-        if DEBUG: print "site: %s" % url
-        if DEBUG: print "  striphtml: %s" % striphtml
+        site = Site(args[0], args[1], args[2:])
         
-        emails = args[2:]
-        
-        id = hashlib.md5(url).hexdigest()[0:8]
-        if DEBUG: print "  id: %s" % id
-        
-        shorturl = re.sub(r'[^/]*//([^@]*@)?([^:/]*).*', r'\2', url)
-        if DEBUG: print "  shorturl: %s" % shorturl
+        if DEBUG:
+            print "site: %s" % site.url
+            print "  striphtml: %s" % site.striphtml
+            print "  id: %s" % site.id
+            print "  shorturl: %s" % site.shorturl
         
         # persistent files
-        MD5_FILE = os.path.join(PER_DIR, id+'.md5')
-        SITE_FILE = os.path.join(PER_DIR, id+'.site')
+        MD5_FILE = os.path.join(PER_DIR, site.id+'.md5')
+        SITE_FILE = os.path.join(PER_DIR, site.id+'.site')
         
         # retrieve site
-        new_data = urllib.urlopen(url).read()
+        new_data = urllib.urlopen(site.url).read()
         # hash before converting charset
         new_md5 = hashlib.md5(new_data).hexdigest()
         
@@ -138,7 +136,7 @@ def main():
                 print "    old md5: %s, new md5: %s" % (old_md5, new_md5)
             
             # content of email
-            content = "Change at %s - diff follows:\n\n" % url
+            content = "Change at %s - diff follows:\n\n" % site.url
             
             diffGen = difflib.unified_diff(
                 old_data,
@@ -152,14 +150,14 @@ def main():
             
             diff = ''.join([line for line in diffGen])
             
-            if striphtml == "yes":
+            if site.striphtml:
                 diff = stripHTML(diff)
             
             content += diff
                         
-            for addr in emails:
+            for addr in site.emails:
                 if DEBUG: print "    addr: %s" % addr
-                sendMail(content, "[%s] %s changed" % (TAG, shorturl), addr)
+                sendMail(content, "[%s] %s changed" % (TAG, site.shorturl), addr)
                 
             # syslog connection
             #logger -t "$TAG" "Change at $site (tag $id) detected"
