@@ -95,10 +95,10 @@ def main():
         old_data = indata.readlines()
         indata.close()
         
-        #print old_md5+" "+new_md5
-        
         if old_md5 != new_md5:
-            if DEBUG: print "  Change detected:"
+            if DEBUG:
+                print "  Change detected:"
+                print "    old md5: %s, new md5: %s" % (old_md5, new_md5)
             
             # content of email
             content = "Change at %s - diff follows:\n\n" % site
