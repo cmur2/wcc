@@ -7,9 +7,9 @@ sys.setdefaultencoding('utf-8') # we always need failsafe utf-8, in some way
 
 import os
 import re
+import time
 import hashlib
 import urllib
-import datetime
 import difflib
 import smtplib
 
@@ -117,13 +117,12 @@ def main():
                 new_data.splitlines(True),
                 "OLD",
                 "NEW",
-                '('+datetime.datetime.fromtimestamp(os.path.getmtime(MD5_FILE)).strftime('%Y-%m-%d %H:%M:%S')+')',
-                '('+datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')+')',
+                '(%s)' % time.strftime('%Y-%m-%d %H:%M:%S',
+                                time.gmtime(os.path.getmtime(MD5_FILE))),
+                '(%s)' % time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()),
                 1)
             
-            diff = ""
-            for line in diffGen:
-                diff += line
+            diff = ''.join(line for line in diffGen)
             
             #if striphtml == "yes":
             #
@@ -145,7 +144,6 @@ def main():
             outdata = open(SITE_FILE, 'w')
             outdata.write(new_data+'\n')
             outdata.close()
-        
 
 if __name__ == '__main__':
     from optparse import OptionParser
