@@ -122,7 +122,7 @@ def main():
                 '(%s)' % time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()),
                 1)
             
-            diff = ''.join(line for line in diffGen)
+            diff = ''.join([line for line in diffGen])
             
             #if striphtml == "yes":
             #
