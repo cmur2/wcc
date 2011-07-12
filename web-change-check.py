@@ -31,6 +31,7 @@ TMP_DIR = "/tmp/wcc"
 # make verbose output - cron will spam you :p
 DEBUG = True
 
+# assume a local mail server without authentiction at port 25
 SERVER = "localhost"
 PORT = 25
 
