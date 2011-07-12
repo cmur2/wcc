@@ -12,6 +12,7 @@ import hashlib
 import urllib
 import difflib
 import smtplib
+import htmlentitydefs
 
 from email.mime.text import MIMEText
 
@@ -47,8 +48,18 @@ def sendMail(msg, subject, to):
     s.quit()
 
 def stripHTML(orig):
-    # TODO
-    return orig
+    new = re.sub('<[^>]*>', ' ', orig)
+    
+    def conv(m):
+        text = m.group(0)
+        try:
+            text = unichr(htmlentitydefs.name2codepoint[text[1:-1]])
+        except KeyError:
+            pass
+        return text
+    
+    # replace named html entities like &amp;
+    return re.sub("&\w+;", conv, new)
 
 def main():
     # read all lines
@@ -77,21 +88,20 @@ def main():
         MD5_FILE = os.path.join(PER_DIR, tname+'.md5')
         SITE_FILE = os.path.join(PER_DIR, tname+'.site')
         
+        # retrieve site
         new_data = urllib.urlopen(site).read()
+        # hash before converting charset
         new_md5 = hashlib.md5(new_data).hexdigest()
         
-        # detect charset
-        # get charset, may be empty, case unspecified
-        #enc="$(cat $1 | grep -Eio '<meta.*?content-type.*?>' | sed -e 's/<meta.*charset=\([a-zA-Z0-9-]*\).*/\1/g')"
-        # to lower case
-        #enc="$(echo $enc | tr '[:upper:]' '[:lower:]')"
-        
-        # assume as default
+        # detect encoding of site - assume UTF-8 as default
         enc = "utf-8"
         for line in new_data.splitlines(True):
             if re.search(r'<meta.*?content-type.*?>', line, re.IGNORECASE):
-                m = re.search(r'<meta.*charset=([a-zA-Z0-9-]*).*', line)
-                enc = m.group(1).lower()
+                # found line with meta tag containing content-type information
+                # now filter out the charset information:
+                match = re.search(r'<meta.*charset=([a-zA-Z0-9-]*).*', line)
+                if match.group(1) != "": enc = match.group(1).lower()
+                break
                 
         if DEBUG: print "  encoding: %s" % enc
         
