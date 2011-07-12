@@ -84,15 +84,15 @@ def main():
         
         emails = args[2:]
         
-        tname = hashlib.md5(url).hexdigest()[0:8]
-        if DEBUG: print "  tname: %s" % tname
+        id = hashlib.md5(url).hexdigest()[0:8]
+        if DEBUG: print "  id: %s" % id
         
-        tsite = re.sub(r'[^/]*//([^@]*@)?([^:/]*).*', r'\2', url)
-        if DEBUG: print "  tsite: %s" % tsite
+        shorturl = re.sub(r'[^/]*//([^@]*@)?([^:/]*).*', r'\2', url)
+        if DEBUG: print "  shorturl: %s" % shorturl
         
         # persistent files
-        MD5_FILE = os.path.join(PER_DIR, tname+'.md5')
-        SITE_FILE = os.path.join(PER_DIR, tname+'.site')
+        MD5_FILE = os.path.join(PER_DIR, id+'.md5')
+        SITE_FILE = os.path.join(PER_DIR, id+'.site')
         
         # retrieve site
         new_data = urllib.urlopen(url).read()
@@ -159,10 +159,10 @@ def main():
                         
             for addr in emails:
                 if DEBUG: print "    addr: %s" % addr
-                sendMail(content, "[%s] %s changed" % (TAG, tsite), addr)
+                sendMail(content, "[%s] %s changed" % (TAG, shorturl), addr)
                 
             # syslog connection
-            #logger -t "$TAG" "Change at $site (tag $tname) detected"
+            #logger -t "$TAG" "Change at $site (tag $id) detected"
             
             # do update
             outmd5 = open(MD5_FILE, 'w')
