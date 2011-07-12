@@ -80,6 +80,24 @@ def main():
         new_data = urllib.urlopen(site).read()
         new_md5 = hashlib.md5(new_data).hexdigest()
         
+        # detect charset
+        # get charset, may be empty, case unspecified
+        #enc="$(cat $1 | grep -Eio '<meta.*?content-type.*?>' | sed -e 's/<meta.*charset=\([a-zA-Z0-9-]*\).*/\1/g')"
+        # to lower case
+        #enc="$(echo $enc | tr '[:upper:]' '[:lower:]')"
+        
+        # assume as default
+        enc = "utf-8"
+        for line in new_data.splitlines(True):
+            if re.search(r'<meta.*?content-type.*?>', line, re.IGNORECASE):
+                m = re.search(r'<meta.*charset=([a-zA-Z0-9-]*).*', line)
+                enc = m.group(1).lower()
+                
+        if DEBUG: print "  encoding: %s" % enc
+        
+        # new_data is available in utf-8 (system default encoding)
+        new_data = new_data.decode(enc)
+        
         if not os.path.exists(MD5_FILE):
             outmd5 = open(MD5_FILE, 'w')
             outmd5.write(new_md5+'\n')
