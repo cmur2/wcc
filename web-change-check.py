@@ -32,19 +32,25 @@ DEBUG = True
 # assume a local mail server without authentiction at port 25
 SERVER = "localhost"
 PORT = 25
+FROM = "user@localhost"
+
+class Site:
+    def __init__(self, url, striphtml, emails):
+        self.url = url
+        self.striphtml = striphtml
+        self.emails = emails
+
 
 
 def sendMail(msg, subject, to):
-    fr = "chrnicolai@gmail.com"
-
     text = MIMEText(msg)
     text['Subject'] = subject
-    text['From'] = fr
+    text['From'] = FROM
     text['To'] = to
     
     s = smtplib.SMTP(SERVER, PORT)
     s.starttls()
-    s.sendmail(fr, [to], text.as_string())
+    s.sendmail(FROM, [to], text.as_string())
     s.quit()
 
 def stripHTML(orig):
@@ -65,23 +71,23 @@ def main():
     # read all lines
     for line in open(CONF, 'r'):
         line = line.strip()
-        if not re.match('^[^#]', line):
+        if not re.match(r'^[^#]', line):
             continue
         
         #print line
         
         args = [arg for arg in line.split(';')]
         
-        site, striphtml = args[0:2]
-        if DEBUG: print "site: %s" % site
+        url, striphtml = args[0:2]
+        if DEBUG: print "site: %s" % url
         if DEBUG: print "  striphtml: %s" % striphtml
         
         emails = args[2:]
         
-        tname = hashlib.md5(site).hexdigest()[0:8]
+        tname = hashlib.md5(url).hexdigest()[0:8]
         if DEBUG: print "  tname: %s" % tname
         
-        tsite = re.sub(r'[^/]*\/\/([^@]*@)?([^:/]*).*', r'\2', site)
+        tsite = re.sub(r'[^/]*//([^@]*@)?([^:/]*).*', r'\2', url)
         if DEBUG: print "  tsite: %s" % tsite
         
         # persistent files
@@ -89,7 +95,7 @@ def main():
         SITE_FILE = os.path.join(PER_DIR, tname+'.site')
         
         # retrieve site
-        new_data = urllib.urlopen(site).read()
+        new_data = urllib.urlopen(url).read()
         # hash before converting charset
         new_md5 = hashlib.md5(new_data).hexdigest()
         
@@ -132,7 +138,7 @@ def main():
                 print "    old md5: %s, new md5: %s" % (old_md5, new_md5)
             
             # content of email
-            content = "Change at %s - diff follows:\n\n" % site
+            content = "Change at %s - diff follows:\n\n" % url
             
             diffGen = difflib.unified_diff(
                 old_data,
