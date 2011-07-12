@@ -44,6 +44,7 @@ def sendMail(msg, subject, to):
     text['To'] = to
     
     s = smtplib.SMTP(SERVER, PORT)
+    s.starttls()
     s.sendmail(fr, [to], text.as_string())
     s.quit()
     
