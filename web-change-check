@@ -35,7 +35,7 @@ copyOld() {
 	mv $TMP_SITE $SITE_FILE
 }
 
-stripeHTML() {
+stripHTML() {
 	# $1 input file
 	# $2 output file
 	
@@ -123,7 +123,7 @@ egrep "^[^#]" $CONF | while read line; do
 		
 		/usr/bin/diff -U 1 --label "$LOLD" --label "$LNEW" $SITE_FILE $TMP_SITE > $TMP_DIFF
 		if [ "$striphtml" == "yes" ]; then
-			stripeHTML $TMP_DIFF $TMP_DIFF2
+			stripHTML $TMP_DIFF $TMP_DIFF2
 			cat $TMP_DIFF2 > $TMP_DIFF
 		fi
 		cat $TMP_DIFF >> $TMP_MAIL
