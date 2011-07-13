@@ -13,6 +13,7 @@ import urllib
 import difflib
 import smtplib
 import htmlentitydefs
+import subprocess
 
 from email.mime.text import MIMEText
 
@@ -143,7 +144,8 @@ def checkAndNotify(site):
     if not os.path.exists(MD5_FILE):
         updateMD5AndSiteFiles(MD5_FILE, new_md5, SITE_FILE, new_data)
         return
-            
+    
+    # read (old) reference data
     inmd5 = open(MD5_FILE, 'r')
     old_md5 = inmd5.readline().strip()
     inmd5.close()
@@ -181,8 +183,8 @@ def checkAndNotify(site):
             if DEBUG: print "    addr: %s" % addr
             sendMail(content, "[%s] %s changed" % (TAG, site.shorturl), addr)
                 
-        # syslog connection
-        #logger -t "$TAG" "Change at $site (tag $id) detected"
+        # syslog notify
+        subprocess.Popen(['logger', '-t', TAG, 'Change at %s (tag %s) detected' % (site.url, site.id)], shell=False)
             
         # do update
         updateMD5AndSiteFiles(MD5_FILE, new_md5, SITE_FILE, new_data)
