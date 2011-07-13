@@ -197,6 +197,10 @@ if __name__ == '__main__':
     (options, args) = parser.parse_args()
     DEBUG = options.verbose
     
+    # create persistent dir
+    if not os.path.isdir(PER_DIR):
+        os.makedirs(PER_DIR)
+    
     for site in parseConfig(CONF):
         if DEBUG:
             print "site: %s" % site.url
