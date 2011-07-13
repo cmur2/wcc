@@ -13,7 +13,7 @@ import smtplib
 import pickle
 
 from hashlib import sha1
-from urllib import urlopen
+from urllib import urlopen, quote
 from email.mime.text import MIMEText
 from zlib import compress, decompress
 from difflib import Differ
@@ -51,7 +51,7 @@ def checkforupdate(url):
     """checks whether website has changed using sha1 hash stored
     in /var/tmp/wcc.tmp. Notification using sendmail()."""
     
-    data = urlopen(url).read()  
+    data = urlopen(quote(url)).read()  
     h = sha1(data).hexdigest()
     
     try:
