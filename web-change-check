@@ -54,7 +54,7 @@ stripHTML() {
 	# iconv
 	iconv -f=$enc -t="utf-8" $1 > $2
 
-	# inplace sed with non-greedy <tag> eater
+	# inplace sed with <tag> eater
 	sed -i -e 's/<[^>]*>/ /g;' $2
 	# common entity converter
 	sed -i -e 's/\&lt\;/</g;s/\&gt\;/>/g;s/\&auml\;/ä/g;s/\&ouml\;/ö/g;s/\&uuml\;/ü/g;s/\&nbsp\;/ /g' $2
