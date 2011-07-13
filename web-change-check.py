@@ -35,6 +35,8 @@ PORT = 25
 FROM = "user@localhost"
 
 class Site:
+    """ Data structure containing all information associated with a "site" """
+    
     def __init__(self, url, striphtml, emails):
         self.url = url
         self.striphtml = (striphtml == "yes") # parse "yes" to True, else False
@@ -46,6 +48,9 @@ class Site:
 
 
 def sendMail(msg, subject, to):
+    """ Sends mail containing the given message with the given subject to
+    the given address. """
+    
     text = MIMEText(msg)
     text['Subject'] = subject
     text['From'] = FROM
@@ -56,9 +61,12 @@ def sendMail(msg, subject, to):
     s.sendmail(FROM, [to], text.as_string())
     s.quit()
 
-def stripHTML(orig):
+def stripHTML(html):
+    """ Returns the input with all HTML tags deleted and all HTML
+    entities replaced with their unicode representation. """
+    
     # delete all <tags>
-    new = re.sub('<[^>]*>', ' ', orig)
+    new = re.sub('<[^>]*>', ' ', html)
     
     def conv(m):
         text = m.group(0)
@@ -71,7 +79,27 @@ def stripHTML(orig):
     # replace named html entities like &amp;
     return re.sub("&\w+;", conv, new)
 
+def detectEncoding(htmlLines):
+    """ Searches the given list of lines of HTML to find the <meta> tag containing
+    information about content-type and charset and returns this charset.
+    If serach fails, 'utf-8' will be returned as default. """
+    
+    enc = "utf-8"
+    for line in htmlLines:
+        if re.search(r'<meta.*?content-type.*?>', line, re.IGNORECASE):
+            # found line with meta tag containing content-type information
+            # now filter out the charset information:
+            match = re.search(r'<meta.*charset=([a-zA-Z0-9-]*).*', line)
+            if match.group(1) != "":
+                enc = match.group(1).lower()
+                break
+    
+    return enc
+
 def parseConfig(file):
+    """ Parses the given configuration file into several Site objects
+    and returns them as a list. """
+    
     sites = []
     # read all lines
     for line in open(file, 'r'):
@@ -84,7 +112,16 @@ def parseConfig(file):
 
     return sites
 
-def main(site):
+def updateMD5AndSiteFiles(md5File, md5Data, siteFile, siteData):
+    outmd5 = open(md5File, 'w')
+    outmd5.write(md5Data+'\n')
+    outmd5.close()
+            
+    outdata = open(siteFile, 'w')
+    outdata.write(siteData+'\n')
+    outdata.close()    
+
+def checkAndNotify(site):
         
     # persistent files
     MD5_FILE = os.path.join(PER_DIR, site.id+'.md5')
@@ -96,15 +133,7 @@ def main(site):
     new_md5 = hashlib.md5(new_data).hexdigest()
         
     # detect encoding of site - assume UTF-8 as default
-    enc = "utf-8"
-    for line in new_data.splitlines(True):
-        if re.search(r'<meta.*?content-type.*?>', line, re.IGNORECASE):
-            # found line with meta tag containing content-type information
-            # now filter out the charset information:
-            match = re.search(r'<meta.*charset=([a-zA-Z0-9-]*).*', line)
-            if match.group(1) != "":
-                enc = match.group(1).lower()
-                break
+    enc = detectEncoding(new_data.splitlines(True))
                 
     if DEBUG: print "  encoding: %s" % enc
 
@@ -112,13 +141,7 @@ def main(site):
     new_data = new_data.decode(enc)
         
     if not os.path.exists(MD5_FILE):
-        outmd5 = open(MD5_FILE, 'w')
-        outmd5.write(new_md5+'\n')
-        outmd5.close()
-            
-        outdata = open(SITE_FILE, 'w')
-        outdata.write(new_data+'\n')
-        outdata.close()
+        updateMD5AndSiteFiles(MD5_FILE, new_md5, SITE_FILE, new_data)
         return
             
     inmd5 = open(MD5_FILE, 'r')
@@ -162,13 +185,8 @@ def main(site):
         #logger -t "$TAG" "Change at $site (tag $id) detected"
             
         # do update
-        outmd5 = open(MD5_FILE, 'w')
-        outmd5.write(new_md5+'\n')
-        outmd5.close()
-            
-        outdata = open(SITE_FILE, 'w')
-        outdata.write(new_data+'\n')
-        outdata.close()
+        updateMD5AndSiteFiles(MD5_FILE, new_md5, SITE_FILE, new_data)
+
 
 if __name__ == '__main__':
     from optparse import OptionParser
@@ -186,4 +204,4 @@ if __name__ == '__main__':
             print "  id: %s" % site.id
             print "  shorturl: %s" % site.shorturl
         
-        main(site)
+        checkAndNotify(site)
