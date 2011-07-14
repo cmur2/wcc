@@ -142,7 +142,7 @@ class Site
 	
 	def hash=(hash)
 		@hash = hash
-		file = Conf.file(@id + ".md5")
+		file = Conf.file(self.id + ".md5")
 		$stdout.puts "DEBUG: Save new site hash to file '" + file + "'" if Conf.debug?
 		File.open(file, "w") { |f| f.write(@hash) }
 	end
@@ -151,7 +151,7 @@ class Site
 		@content = content
 		file = Conf.file(self.id + ".site")
 		$stdout.puts "DEBUG: Save new site content to file '" + file + "'" if Conf.debug?
-		File.open(file, "w") { |f| f.write(content) }
+		File.open(file, "w") { |f| f.write(@content) }
 	end
 end
 
