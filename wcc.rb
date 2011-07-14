@@ -78,7 +78,7 @@ class Conf
 		File.open(conf_file).each do |line|
 			# regex to match required config lines; all other lines are ignored
 			if line =~ /^[^#]*?;.*?[;.*?]+;?/
-				conf_line = line.split(';')
+				conf_line = line.strip.split(';')
 				@sites << Site.new(conf_line[0], conf_line[1], conf_line[2, conf_line.length])
 			end
 		end
@@ -128,7 +128,7 @@ class Site
 			File.open(file, "r") { |f| @hash = f.gets; break }
 		else
 			$stdout.puts "INFO: Site " + uri.host + " was never checked before." unless Conf.quiet?
-			# @hash is nil?!
+			# @hash is nil
 		end
 	end
 	
@@ -184,19 +184,16 @@ def checkForUpdate(site)
 	new_label = "NEW (%s)" % Time.now.to_s
 	diff = %x{diff -U 1 --label "#{old_label}" --label "#{new_label}" /tmp/wcc-#{site.id}.site #{Conf.file(site.id + ".site")}}
 		
-	Net::SMTP.start('localhost') do |smtp|
-		self.emails.each do |m|
+	Net::SMTP.start('localhost', 25) do |smtp|
+		site.emails.each do |mail|
 			msg  = "From: #{Conf.from_mail}\n"
-			msg += "To: <#{m}>\n"
+			msg += "To: #{mail}\n"
 			msg += "Subject: [#{Conf.tag}] #{site.uri.host} changed\n"
 			msg += "\n"
 			msg += "Change at #{site.uri.to_s} - diff follows:\n\n"
 			msg += diff
 			
-			begin
-				smtp.send_message msg, Conf.from_mail, m
-			rescue Net::SMTPSyntaxError
-			end
+			smtp.send_message msg, Conf.from_mail, [mail]
 		end
 	end if Conf.send_mails?
 	
