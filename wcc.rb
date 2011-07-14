@@ -18,7 +18,7 @@ class Conf
 			:quiet => false, 
 			:dir => '/var/tmp/wcc',
 			:simulate => false,
-			:clean => false
+			:clean => false,
 			:tag => 'web change checker2'
 		}
 	
