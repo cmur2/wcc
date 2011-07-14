@@ -173,11 +173,16 @@ def checkForUpdate(site)
 	$stdout.puts "DEBUG: Compare hashes...\n  " + new_hash.to_s + "\n  " + site.hash.to_s if Conf.debug?
 	return false if new_hash == site.hash
 	
+	# save old site to tmp file
 	File.open("/tmp/wcc-" + site.id + ".site", "w") { |f| f.write(site.content) }
-	site.hash, site.content = new_hash, r.body
 		
-	#diff = Diffy::Diff.new(content, r.body).to_s(:text)
-	diff = %x{diff -U 1 --label OLD --label NEW /tmp/wcc-#{site.id}.site #{Conf.file(site.id + ".site")}}
+	# do update
+	site.hash, site.content = new_hash, r.body
+	
+	# diff between OLD and NEW
+	old_label = "OLD (%s)" % File.mtime(Conf.file(site.id + ".md5")).to_s
+	new_label = "NEW (%s)" % Time.now.to_s
+	diff = %x{diff -U 1 --label "#{old_label}" --label "#{new_label}" /tmp/wcc-#{site.id}.site #{Conf.file(site.id + ".site")}}
 		
 	Net::SMTP.start('localhost') do |smtp|
 		self.emails.each do |m|
@@ -194,7 +199,7 @@ def checkForUpdate(site)
 			end
 		end
 	end if Conf.send_mails?
-		
+	
 	true
 end
 
