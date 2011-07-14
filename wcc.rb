@@ -1,3 +1,5 @@
+#!/usr/bin/ruby -W0
+
 require 'digest/md5'
 require 'uri'
 require 'optparse'
@@ -17,19 +19,21 @@ class Conf
 			:dir => '/var/tmp/wcc',
 			:simulate => false,
 			:clean => false
+			:tag => 'web change checker2'
 		}
 	
 		optparse = OptionParser.new do|opts|
 			opts.banner = "Usage: ruby wcc.rb [options] [config-file]"
-			opts.on( '-q', '--quiet', 'Show only errors' ) do @options[:quiet] = true end
-			opts.on( '-v', '--verbose', 'Output more information' ) do @options[:verbose] = true end
-			opts.on( '-d', '--debug', 'Enable debug mode' ) do @options[:debug] = true end
-			opts.on( '-o', '--dir DIR', 'Save required files to DIR' ) do |dir| @options[:dir] = dir end
-			opts.on( '-c', '--clean', 'Removes all hash and diff files') do @options[:clean] = true end
-			opts.on( '-s', '--simulate', 'Check for update but does not save any data') do @options[:simulate] = true end
-			opts.on( '-n', '--no-mails', 'Does not send any emails') do @options[:nomails] = true end
-			opts.on( '-f', '--from MAIL', 'Set sender mail address') do |m| @options[:from] = m end
-			opts.on( '-h', '--help', 'Display this screen' ) do
+			opts.on('-q', '--quiet', 'Show only errors') do @options[:quiet] = true end
+			opts.on('-v', '--verbose', 'Output more information') do @options[:verbose] = true end
+			opts.on('-d', '--debug', 'Enable debug mode') do @options[:debug] = true end
+			opts.on('-o', '--dir DIR', 'Save required files to DIR') do |dir| @options[:dir] = dir end
+			opts.on('-s', '--simulate', 'Check for update but does not save any data') do @options[:simulate] = true end
+			opts.on('-c', '--clean', 'Removes all hash and diff files') do @options[:clean] = true end
+			opts.on('-t', '--tag TAG', 'Sets a tag used in output') do |t| @options[:tag] = t end
+			opts.on('-n', '--no-mails', 'Does not send any emails') do @options[:nomails] = true end
+			opts.on('-f', '--from MAIL', 'Set sender mail address') do |m| @options[:from] = m end
+			opts.on('-h', '--help', 'Display this screen') do
 				puts opts
 				exit
 			end
@@ -92,6 +96,7 @@ class Conf
 	def self.verbose?; (Conf.instance.options[:verbose] and !self.quiet?) or self.debug? end
 	def self.quiet?; Conf.instance.options[:quiet] and !self.debug? end
 	def self.simulate?; Conf.instance.options[:simulate] end
+	def self.tag; Conf.instance.options[:tag] end
 	def self.send_mails?; !Conf.instance.options[:nomails] end
 	def self.from_mail; Conf.instance.options[:from] end
 end
@@ -123,6 +128,7 @@ class Site
 			File.open(file, "r") { |f| @hash = f.gets; break }
 		else
 			$stdout.puts "INFO: Site " + uri.host + " was never checked before." unless Conf.quiet?
+			# @hash is nil?!
 		end
 	end
 	
@@ -134,13 +140,6 @@ class Site
 		end
 	end
 	
-	def content=(content)
-		@content = content
-		file = Conf.file(self.id + ".site")
-		$stdout.puts "DEBUG: Save new site content to file '" + file + "'" if Conf.debug?
-		File.open(file, "w") { |f| f.write(content) }
-	end
-	
 	def hash=(hash)
 		@hash = hash
 		file = Conf.file(@id + ".md5")
@@ -148,49 +147,57 @@ class Site
 		File.open(file, "w") { |f| f.write(@hash) }
 	end
 	
-	def update!
-		$stdout.puts "\nINFO: Requesting '" + @uri.to_s + "'" if Conf.verbose?
-		begin
-			r = Net::HTTP.get_response(@uri)
-		rescue
-			$stderr.puts "ERROR: Cannot connect to '" + @uri.to_s + "': " + $!.to_s
-			return false
-		end
-		if r.code.to_i != 200
-			$stderr.puts  "WARN: Site " + @uri.to_s + " returned " + r.code.to_s + " code. Ignore." unless Conf.quiet?
-			return false
-		end
-		$stdout.puts "INFO: " + r.code.to_s + " response received" if Conf.verbose?
-		
-		new_hash = Digest::MD5.hexdigest(r.body)
-		$stdout.puts "DEBUG: Compare hashes...\n  " + new_hash.to_s + "\n  " + self.hash.to_s if Conf.debug?
-		return false if new_hash == self.hash
-		
-		File.open("/tmp/wcc-" + self.id + ".site", "w") { |f| f.write(self.content) }
-		self.hash, self.content = new_hash, r.body
-		
-		#diff = Diffy::Diff.new(content, r.body).to_s(:text)
-		diff = %x{diff -u --label OLD --label NEW /tmp/wcc-#{self.id}.site #{Conf.file(self.id + ".site")}}
-		
-		Net::SMTP.start('localhost') do |smtp|
-			self.emails.each do |m|
-				msg  = "From: #{Conf.from_mail}\n"
-				msg += "To: <#{m}>\n"
-				msg += "Subject: #{self.uri.host} has changed\n"
-				msg += "\n"
-				msg += "Change at #{self.uri.to_s} - diff follows:\n\n" + diff
-				
-				begin
-					smtp.send_message msg, Conf.from_mail, m
-				rescue Net::SMTPSyntaxError
-				end
-			end
-		end if Conf.send_mails?
-		
-		true
+	def content=(content)
+		@content = content
+		file = Conf.file(self.id + ".site")
+		$stdout.puts "DEBUG: Save new site content to file '" + file + "'" if Conf.debug?
+		File.open(file, "w") { |f| f.write(content) }
 	end
 end
 
+def checkForUpdate(site)
+	$stdout.puts "\nINFO: Requesting '" + site.uri.to_s + "'" if Conf.verbose?
+	begin
+		r = Net::HTTP.get_response(site.uri)
+	rescue
+		$stderr.puts "ERROR: Cannot connect to '" + site.uri.to_s + "': " + $!.to_s
+		return false
+	end
+	if r.code.to_i != 200
+		$stderr.puts  "WARN: Site " + site.uri.to_s + " returned " + r.code.to_s + " code. Ignore." unless Conf.quiet?
+		return false
+	end
+	$stdout.puts "INFO: " + r.code.to_s + " response received" if Conf.verbose?
+	
+	new_hash = Digest::MD5.hexdigest(r.body)
+	$stdout.puts "DEBUG: Compare hashes...\n  " + new_hash.to_s + "\n  " + site.hash.to_s if Conf.debug?
+	return false if new_hash == site.hash
+	
+	File.open("/tmp/wcc-" + site.id + ".site", "w") { |f| f.write(site.content) }
+	site.hash, site.content = new_hash, r.body
+		
+	#diff = Diffy::Diff.new(content, r.body).to_s(:text)
+	diff = %x{diff -U 1 --label OLD --label NEW /tmp/wcc-#{site.id}.site #{Conf.file(site.id + ".site")}}
+		
+	Net::SMTP.start('localhost') do |smtp|
+		self.emails.each do |m|
+			msg  = "From: #{Conf.from_mail}\n"
+			msg += "To: <#{m}>\n"
+			msg += "Subject: [#{Conf.tag}] #{site.uri.host} changed\n"
+			msg += "\n"
+			msg += "Change at #{site.uri.to_s} - diff follows:\n\n"
+			msg += diff
+			
+			begin
+				smtp.send_message msg, Conf.from_mail, m
+			rescue Net::SMTPSyntaxError
+			end
+		end
+	end if Conf.send_mails?
+		
+	true
+end
+
 Conf.sites.each do |site|
-	$stdout.puts site.uri.host.to_s + ' has ' + (site.update! ? 'an update.' : 'no update') unless Conf.quiet?
+	$stdout.puts site.uri.host.to_s + ' has ' + (checkForUpdate(site) ? 'an update.' : 'no update') unless Conf.quiet?
 end
