@@ -90,8 +90,10 @@ class Conf
 		@sites
 	end
 	
-	def self.dir; Conf.instance.options[:dir] + "/" end
-	def self.file(path = nil) self.dir + path end
+	def self.file(path = nil) File.join(self.dir, path) end
+	
+	# aliases for Conf.instance.options[:option]
+	def self.dir; Conf.instance.options[:dir] end
 	def self.debug?; Conf.instance.options[:debug] end
 	def self.verbose?; (Conf.instance.options[:verbose] and !self.quiet?) or self.debug? end
 	def self.quiet?; Conf.instance.options[:quiet] and !self.debug? end
@@ -128,7 +130,6 @@ class Site
 			File.open(file, "r") { |f| @hash = f.gets; break }
 		else
 			$stdout.puts "INFO: Site " + uri.host + " was never checked before." unless Conf.quiet?
-			# @hash is nil
 		end
 	end
 	
@@ -193,7 +194,7 @@ def checkForUpdate(site)
 			msg += "Change at #{site.uri.to_s} - diff follows:\n\n"
 			msg += diff
 			
-			smtp.send_message msg, Conf.from_mail, [mail]
+			smtp.send_message msg, Conf.from_mail, mail
 		end
 	end if Conf.send_mails?
 	
