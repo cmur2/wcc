@@ -125,17 +125,17 @@ class Site
 	def load_hash
 		file = Conf.file(self.id + ".md5")
 		if File.exists?(file)
-			$stdout.puts "DEBUG: Load hash from file '" + file + "'" if Conf.debug?
+			$stdout.puts "DEBUG: Load hash from file '#{file}'" if Conf.debug?
 			File.open(file, "r") { |f| @hash = f.gets; break }
 		else
-			$stdout.puts "INFO: Site " + uri.host + " was never checked before." unless Conf.quiet?
+			$stdout.puts "INFO: Site #{uri.host} was never checked before." unless Conf.quiet?
 		end
 	end
 	
 	def load_content
 		file = Conf.file(self.id + ".site")
 		if File.exists?(file)
-			$stdout.puts "DEBUG: Read site content from file '" + file + "'" if Conf.debug?
+			$stdout.puts "DEBUG: Read site content from file '#{file}'" if Conf.debug?
 			File.open(file, "r") { |f| @content = f.read }
 		end
 	end
@@ -143,14 +143,14 @@ class Site
 	def hash=(hash)
 		@hash = hash
 		file = Conf.file(self.id + ".md5")
-		$stdout.puts "DEBUG: Save new site hash to file '" + file + "'" if Conf.debug?
+		$stdout.puts "DEBUG: Save new site hash to file '#{file}'" if Conf.debug?
 		File.open(file, "w") { |f| f.write(@hash) }
 	end
 	
 	def content=(content)
 		@content = content
 		file = Conf.file(self.id + ".site")
-		$stdout.puts "DEBUG: Save new site content to file '" + file + "'" if Conf.debug?
+		$stdout.puts "DEBUG: Save new site content to file '#{file}'" if Conf.debug?
 		File.open(file, "w") { |f| f.write(@content) }
 	end
 end
