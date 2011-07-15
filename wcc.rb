@@ -50,7 +50,7 @@ class Conf
 		@options[:conf_file] = ARGV[0] || 'conf'
 		
 		if !File.exists?(@options[:conf_file])
-			$stderr.puts "FATAL: Config file '" + @options[:conf_file] + "' does not exists."
+			$stderr.puts "FATAL: Config file '%s' does not exists." % @options[:conf_file]
 			exit 1
 		end
 		
@@ -73,7 +73,7 @@ class Conf
 		conf_file = Conf.instance.options[:conf_file] if conf_file.nil?
 		@sites = []
 		
-		$stdout.puts "DEBUG: Load sites from '" + conf_file + "'" if Conf.debug?
+		$stdout.puts "DEBUG: Load sites from '%s'" % conf_file if Conf.debug?
 		
 		File.open(conf_file).each do |line|
 			# regex to match required config lines; all other lines are ignored
@@ -83,10 +83,9 @@ class Conf
 			end
 		end
 		
-		$stdout.puts "DEBUG: " + @sites.length.to_s + 
-			(@sites.length == 1 ? ' site' : ' sites') + " loaded\n  " +
-			@sites.map { |s| s.uri.host.to_s + "\n    url: " + 
-			s.uri.to_s + "\n    id: " + s.id }.join("\n  ") if Conf.debug?
+		$stdout.puts "DEBUG: " + @sites.length.to_s + (@sites.length == 1 ? ' site' : ' sites') + " loaded\n" +
+			@sites.map { |s| "  " + s.uri.host.to_s + "\n    url: " +
+			s.uri.to_s + "\n    id: " + s.id }.join("\n") if Conf.debug?
 		@sites
 	end
 	
@@ -157,26 +156,26 @@ class Site
 end
 
 def checkForUpdate(site)
-	$stdout.puts "\nINFO: Requesting '" + site.uri.to_s + "'" if Conf.verbose?
+	$stdout.puts "\nINFO: Requesting '%s'" % site.uri.to_s if Conf.verbose?
 	begin
 		r = Net::HTTP.get_response(site.uri)
 	rescue
-		$stderr.puts "ERROR: Cannot connect to '" + site.uri.to_s + "': " + $!.to_s
+		$stderr.puts "ERROR: Cannot connect to '%s': %s" % [site.uri.to_s, $!.to_s]
 		return false
 	end
 	if r.code.to_i != 200
-		$stderr.puts  "WARN: Site " + site.uri.to_s + " returned " + r.code.to_s + " code. Ignore." unless Conf.quiet?
+		$stderr.puts "WARN: Site %s returned %s code. Ignore." % [site.uri.to_s, r.code.to_s] unless Conf.quiet?
 		return false
 	end
-	$stdout.puts "INFO: " + r.code.to_s + " response received" if Conf.verbose?
+	$stdout.puts "INFO: %s response received" % r.code.to_s if Conf.verbose?
 	
 	new_hash = Digest::MD5.hexdigest(r.body)
-	$stdout.puts "DEBUG: Compare hashes...\n  " + new_hash.to_s + "\n  " + site.hash.to_s if Conf.debug?
+	$stdout.puts "DEBUG: Compare hashes...\n  %s\n  %s" % [new_hash.to_s, site.hash.to_s] if Conf.debug?
 	return false if new_hash == site.hash
 	
 	# save old site to tmp file
 	File.open("/tmp/wcc-" + site.id + ".site", "w") { |f| f.write(site.content) }
-		
+	
 	# do update
 	site.hash, site.content = new_hash, r.body
 	
@@ -184,7 +183,7 @@ def checkForUpdate(site)
 	old_label = "OLD (%s)" % File.mtime(Conf.file(site.id + ".md5")).to_s
 	new_label = "NEW (%s)" % Time.now.to_s
 	diff = %x{diff -U 1 --label "#{old_label}" --label "#{new_label}" /tmp/wcc-#{site.id}.site #{Conf.file(site.id + ".site")}}
-		
+	
 	Net::SMTP.start('localhost', 25) do |smtp|
 		site.emails.each do |mail|
 			msg  = "From: #{Conf.from_mail}\n"
@@ -202,5 +201,6 @@ def checkForUpdate(site)
 end
 
 Conf.sites.each do |site|
-	$stdout.puts site.uri.host.to_s + ' has ' + (checkForUpdate(site) ? 'an update.' : 'no update') unless Conf.quiet?
+	updated = checkForUpdate(site)
+	$stdout.puts "%s has %s" % [site.uri.host.to_s, (updated ? 'an update' : 'no update')] unless Conf.quiet?
 end
