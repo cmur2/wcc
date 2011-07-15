@@ -1,95 +1,213 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 #
-# web change check, wcc.py -- influenced by cmur2
-# Used to run as cron. Do `python wcc.py URL`, you can specify multiple
-# URLs in one call, and make multiple calls of wcc.py at different times, of course.
 
 import sys; reload(sys)
 sys.setdefaultencoding('utf-8') # we always need failsafe utf-8, in some way
 
 import os
+import re
+import time
+import hashlib
+import urllib
+import difflib
 import smtplib
-import pickle
+import htmlentitydefs
+import subprocess
 
-from hashlib import sha1
-from urllib import urlopen
 from email.mime.text import MIMEText
-from zlib import compress, decompress
-from difflib import Differ
 
-# This is the main config. Tempfile, where everything is stored.
-# server is a smtp-server, you can access (e.g. gmail)
-# authenticate with login and pass
-# mailto is the recipient, when the site has changed, including a basic diff
 
-TMP = '/var/tmp/wcc.tmp'
-server = "smtp server"; port = 587
-username = "login"
-passwd = "pass"
-mailto = "you@example.org"
+# tag used in output
+TAG = "web change checker2"
 
-def sendmail(fr, to, title, msg):
-    """stolen from the internet. No idea, what it does internally. Works.
-    Basically http://docs.python.org/library/email-examples.html"""
+# config file path
+CONF = "conf"
+
+# persistent directory prefix
+PER_DIR = "/var/tmp/wcc"
+
+# make verbose output - cron will spam you :p
+DEBUG = True
+
+# assume a local mail server without authentiction at port 25
+SERVER = "localhost"
+PORT = 25
+FROM = "user@localhost"
+
+class Site:
+    """ Data structure containing all information associated with a "site" """
     
-    msg = MIMEText(msg)
-    msg['Subject'] = title
-    msg['From'] = fr
-    msg['To'] = to
+    def __init__(self, url, striphtml, emails):
+        self.url = url
+        self.striphtml = (striphtml == "yes") # parse "yes" to True, else False
+        self.emails = emails
+        
+        self.id = hashlib.md5(url).hexdigest()[0:8]
+        self.shorturl = re.sub(r'[^/]*//([^@]*@)?([^:/]*).*', r'\2', url)
+
+
+
+def sendMail(msg, subject, to):
+    """ Sends mail containing the given message with the given subject to
+    the given address. """
     
-    s = smtplib.SMTP(server, port)
-    s.ehlo()
+    text = MIMEText(msg)
+    text['Subject'] = subject
+    text['From'] = FROM
+    text['To'] = to
+    
+    s = smtplib.SMTP(SERVER, PORT)
     s.starttls()
-    s.ehlo()
-    s.login(username, passwd)
-    s.sendmail(fr, [to], msg.as_string())
+    s.sendmail(FROM, [to], text.as_string())
     s.quit()
-    
 
-def checkforupdate(url):
-    """checks whether website has changed using sha1 hash stored
-    in /var/tmp/wcc.tmp. Notification using sendmail()."""
+def stripHTML(html):
+    """ Returns the input with all HTML tags deleted and all HTML
+    entities replaced with their unicode representation. """
     
-    data = urlopen(url).read()  
-    h = sha1(data).hexdigest()
+    # delete all <tags>
+    new = re.sub('<[^>]*>', ' ', html)
     
-    try:
-        dict = pickle.load(open(TMP, 'r'))
-    except EOFError:
-        dict = {}
+    def conv(m):
+        text = m.group(0)
+        try:
+            text = unichr(htmlentitydefs.name2codepoint[text[1:-1]])
+        except KeyError:
+            pass
+        return text
     
-    if not url in dict:
+    # replace named html entities like &amp;
+    return re.sub("&\w+;", conv, new)
+
+def detectEncoding(htmlLines):
+    """ Searches the given list of lines of HTML to find the <meta> tag containing
+    information about content-type and charset and returns this charset.
+    If serach fails, 'utf-8' will be returned as default. """
+    
+    enc = "utf-8"
+    for line in htmlLines:
+        if re.search(r'<meta.*?content-type.*?>', line, re.IGNORECASE):
+            # found line with meta tag containing content-type information
+            # now filter out the charset information:
+            match = re.search(r'<meta.*charset=([a-zA-Z0-9-]*).*', line)
+            if match.group(1) != "":
+                enc = match.group(1).lower()
+                break
+    
+    return enc
+
+def parseConfig(file):
+    """ Parses the given configuration file into several Site objects
+    and returns them as a list. """
+    
+    sites = []
+    # read all lines
+    for line in open(file, 'r'):
+        line = line.strip()
+        if not re.match(r'^[^#]', line):
+            continue
         
-        # first run
-        dict[url] = (h, compress(data))
-    
-    elif dict.get(url)[0] != h:
-        '''hash has changed, now diffing and updating dict'''
+        args = [arg for arg in line.split(';')]
+        sites.append(Site(args[0], args[1], args[2:]))
+
+    return sites
+
+def updateMD5AndSiteFiles(md5File, md5Data, siteFile, siteData):
+    outmd5 = open(md5File, 'w')
+    outmd5.write(md5Data+'\n')
+    outmd5.close()
+            
+    outdata = open(siteFile, 'w')
+    outdata.write(siteData+'\n')
+    outdata.close()    
+
+def checkAndNotify(site):
         
-        diff = []
-        old = decompress(dict.get(url)[1])
-        data = data.split('\n')
-        for i, line in enumerate(old.split('\n')):
-            if line != data[i]: # diff has a multiple of quadratic runtime, only diff, when needed
-                d = Differ()
-                diff.append('\n'.join(d.compare([line, ], [data[i], ])))
+    # persistent files
+    MD5_FILE = os.path.join(PER_DIR, site.id+'.md5')
+    SITE_FILE = os.path.join(PER_DIR, site.id+'.site')
+        
+    # retrieve site
+    new_data = urllib.urlopen(site.url).read()
+    # hash before converting charset
+    new_md5 = hashlib.md5(new_data).hexdigest()
+        
+    # detect encoding of site - assume UTF-8 as default
+    enc = detectEncoding(new_data.splitlines(True))
                 
-        sendmail("wcc.py", mailto, "%s has changed" % url,
-                 "%s.\n\n-- %s" % ('\n'.join(diff), url))
-                
-        dict[url] = (h, compress('\n'.join(data)))
+    if DEBUG: print "  encoding: %s" % enc
+
+    # new_data is available in utf-8 (system default encoding)
+    new_data = new_data.decode(enc)
         
+    if not os.path.exists(MD5_FILE):
+        updateMD5AndSiteFiles(MD5_FILE, new_md5, SITE_FILE, new_data)
+        return
     
-    fp = open(TMP, 'w')
-    pickle.dump(dict, fp)
-    fp.close()
+    # read (old) reference data
+    inmd5 = open(MD5_FILE, 'r')
+    old_md5 = inmd5.readline().strip()
+    inmd5.close()
+        
+    indata = open(SITE_FILE, 'r')
+    old_data = indata.readlines()
+    indata.close()
+        
+    if old_md5 != new_md5:
+        if DEBUG:
+            print "  Change detected:"
+            print "    old md5: %s, new md5: %s" % (old_md5, new_md5)
+            
+        # content of email
+        content = "Change at %s - diff follows:\n\n" % site.url
+            
+        diffGen = difflib.unified_diff(
+            old_data,
+            new_data.splitlines(True),
+            "OLD",
+            "NEW",
+            '(%s)' % time.strftime('%Y-%m-%d %H:%M:%S',
+                            time.gmtime(os.path.getmtime(MD5_FILE))),
+            '(%s)' % time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()),
+            1)
+            
+        diff = ''.join([line for line in diffGen])
+            
+        if site.striphtml:
+            diff = stripHTML(diff)
+            
+        content += diff
+                        
+        for addr in site.emails:
+            if DEBUG: print "    addr: %s" % addr
+            sendMail(content, "[%s] %s changed" % (TAG, site.shorturl), addr)
+                
+        # syslog notify
+        subprocess.Popen(['logger', '-t', TAG, 'Change at %s (tag %s) detected' % (site.url, site.id)], shell=False)
+            
+        # do update
+        updateMD5AndSiteFiles(MD5_FILE, new_md5, SITE_FILE, new_data)
+
 
 if __name__ == '__main__':
-    if len(sys.argv) >= 2:
-        if not os.path.exists(TMP):
-            file(TMP, 'a')
-        for arg in sys.argv[1:]:
-            checkforupdate(arg)
-    else:
-        print >> sys.stderr, "usage: python %s URL" % sys.argv[0]
+    from optparse import OptionParser
+    parser = OptionParser()
+    parser.add_option("-v", "--verbose", action="store_true",
+                dest="verbose", default=True, help="prints all debug messages")
+                
+    (options, args) = parser.parse_args()
+    DEBUG = options.verbose
+    
+    # create persistent dir
+    if not os.path.isdir(PER_DIR):
+        os.makedirs(PER_DIR)
+    
+    for site in parseConfig(CONF):
+        if DEBUG:
+            print "site: %s" % site.url
+            print "  striphtml: %s" % site.striphtml
+            print "  id: %s" % site.id
+            print "  shorturl: %s" % site.shorturl
+        
+        checkAndNotify(site)
