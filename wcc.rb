@@ -7,6 +7,7 @@ require 'singleton'
 require 'net/http'
 require 'net/smtp'
 require 'pathname'
+require 'logger'
 
 class Conf
 	include Singleton
@@ -156,20 +157,25 @@ class Site
 end
 
 def checkForUpdate(site)
+	$logger.info "Requesting '%s'" % site.uri.to_s
 	$stdout.puts "\nINFO: Requesting '%s'" % site.uri.to_s if Conf.verbose?
 	begin
 		r = Net::HTTP.get_response(site.uri)
 	rescue
+		$logger.error " Cannot connect to '%s': %s" % [site.uri.to_s, $!.to_s]
 		$stderr.puts "ERROR: Cannot connect to '%s': %s" % [site.uri.to_s, $!.to_s]
 		return false
 	end
 	if r.code.to_i != 200
+		$logger.warn "Site %s returned %s code. Ignore." % [site.uri.to_s, r.code.to_s]
 		$stderr.puts "WARN: Site %s returned %s code. Ignore." % [site.uri.to_s, r.code.to_s] unless Conf.quiet?
 		return false
 	end
+	$logger.info "%s response received" % r.code.to_s
 	$stdout.puts "INFO: %s response received" % r.code.to_s if Conf.verbose?
 	
 	new_hash = Digest::MD5.hexdigest(r.body)
+	$logger.debug "Compare hashes...\n  %s\n  %s" % [new_hash.to_s, site.hash.to_s]
 	$stdout.puts "DEBUG: Compare hashes...\n  %s\n  %s" % [new_hash.to_s, site.hash.to_s] if Conf.debug?
 	return false if new_hash == site.hash
 	
@@ -199,6 +205,18 @@ def checkForUpdate(site)
 	
 	true
 end
+
+class MyFormatter
+	def call(severity, time, progname, msg)
+		#"%s %5s: %s" % [time.strftime('%H:%M:%S'), severity, msg.to_s]
+		"%s: %s\n" % [severity, msg.to_s]
+	end
+end
+
+$logger = Logger.new(STDOUT)
+$logger.level = Logger::INFO
+$logger.formatter = MyFormatter.new
+$logger.progname = Conf.tag
 
 Conf.sites.each do |site|
 	updated = checkForUpdate(site)
