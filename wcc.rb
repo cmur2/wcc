@@ -144,6 +144,7 @@ class Site
 	
 	def hash=(hash)
 		@hash = hash
+		return if Conf.simulate?
 		file = Conf.file(self.id + ".md5")
 		$logger.debug "Save new site hash to file '#{file}'"
 		File.open(file, "w") { |f| f.write(@hash) }
@@ -151,6 +152,7 @@ class Site
 	
 	def content=(content)
 		@content = content
+		return if Conf.simulate?
 		file = Conf.file(self.id + ".site")
 		$logger.debug "Save new site content to file '#{file}'"
 		File.open(file, "w") { |f| f.write(@content) }
