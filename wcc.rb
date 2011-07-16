@@ -159,18 +159,18 @@ end
 def checkForUpdate(site)
 	$logger.info "Requesting '#{site.uri.to_s}'"
 	begin
-		r = Net::HTTP.get_response(site.uri)
+		res = Net::HTTP.get_response(site.uri)
 	rescue
 		$logger.error "Cannot connect to '#{site.uri.to_s}': #{$!.to_s}"
 		return false
 	end
-	if r.code.to_i != 200
-		$logger.warn "Site #{site.uri.to_s} returned #{r.code.to_s} code, skipping it"
+	if not res.kind_of?(Net::HTTPOK)
+		$logger.warn "Site #{site.uri.to_s} returned #{res.code} code, skipping it."
 		return false
 	end
-	$logger.info "#{r.code.to_s} response received"
+	$logger.info "#{res.code} response received"
 	
-	new_hash = Digest::MD5.hexdigest(r.body)
+	new_hash = Digest::MD5.hexdigest(res.body)
 	$logger.debug "Compare hashes\n  old: #{site.hash.to_s}\n  new: #{new_hash.to_s}"
 	return false if new_hash == site.hash
 	
@@ -178,7 +178,7 @@ def checkForUpdate(site)
 	File.open("/tmp/wcc-#{site.id}.site", "w") { |f| f.write(site.content) }
 	
 	# do update
-	site.hash, site.content = new_hash, r.body
+	site.hash, site.content = new_hash, res.body
 	
 	# diff between OLD and NEW
 	old_label = "OLD (%s)" % File.mtime(Conf.file(site.id + ".md5")).to_s
