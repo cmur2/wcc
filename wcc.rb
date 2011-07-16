@@ -31,7 +31,7 @@ class Conf
 			opts.on('-o', '--dir DIR', 'Save required files to DIR') do |dir| @options[:dir] = dir end
 			opts.on('-s', '--simulate', 'Check for update but does not save any data') do @options[:simulate] = true end
 			opts.on('-c', '--clean', 'Removes all hash and diff files') do @options[:clean] = true end
-			opts.on('-t', '--tag TAG', 'Sets a tag used in output') do |t| @options[:tag] = t end
+			opts.on('-t', '--tag TAG', 'Sets TAG used in output') do |t| @options[:tag] = t end
 			opts.on('-n', '--no-mails', 'Does not send any emails') do @options[:nomails] = true end
 			opts.on('-f', '--from MAIL', 'Set sender mail address') do |m| @options[:from] = m end
 			opts.on('-h', '--help', 'Display this screen') do
@@ -42,16 +42,16 @@ class Conf
 		optparse.parse!
 		
 		if @options[:from].to_s.empty?
-			$logger.fatal "No sender mail address given. See help."
+			$logger.fatal "No sender mail address given! See help."
 			exit 1
 		end
 		
-		$logger.warn "No config file given using default conf file" if ARGV.length == 0
+		$logger.warn "No config file given, using default 'conf' file" if ARGV.length == 0
 
 		@options[:conf_file] = ARGV[0] || 'conf'
 		
 		if !File.exists?(@options[:conf_file])
-			$logger.fatal "Config file '#{@options[:conf_file]}' does not exists."
+			$logger.fatal "Config file '#{@options[:conf_file]}' does not exist!"
 			exit 1
 		end
 		
@@ -59,7 +59,7 @@ class Conf
 		Dir.mkdir(@options[:dir]) unless File.directory?(@options[:dir])
 		
 		if(@options[:clean])
-			$logger.warn "Clean up hash and diff files"
+			$logger.warn "Cleanup hash and diff files"
 			Dir.foreach(@options[:dir]) do |f|
 				File.delete(@options[:dir] + "/" + f) if f =~ /^.*\.(md5|site)$/
 			end
@@ -161,17 +161,17 @@ def checkForUpdate(site)
 	begin
 		r = Net::HTTP.get_response(site.uri)
 	rescue
-		$logger.error " Cannot connect to '#{site.uri.to_s}': #{$!.to_s}"
+		$logger.error "Cannot connect to '#{site.uri.to_s}': #{$!.to_s}"
 		return false
 	end
 	if r.code.to_i != 200
-		$logger.warn "Site #{site.uri.to_s} returned #{r.code.to_s} code. Ignore."
+		$logger.warn "Site #{site.uri.to_s} returned #{r.code.to_s} code, skipping it"
 		return false
 	end
 	$logger.info "#{r.code.to_s} response received"
 	
 	new_hash = Digest::MD5.hexdigest(r.body)
-	$logger.debug "Compare hashes...\n  #{new_hash.to_s}\n  #{site.hash.to_s}"
+	$logger.debug "Compare hashes\n  old: #{site.hash.to_s}\n  new: #{new_hash.to_s}"
 	return false if new_hash == site.hash
 	
 	# save old site to tmp file
@@ -218,9 +218,8 @@ $logger.level = Logger::INFO if Conf.verbose?
 $logger.level = Logger::DEBUG if Conf.debug?
 
 Conf.sites.each do |site|
-	updated = checkForUpdate(site)
-	if updated
-		$logger.warn "#{site.uri.host.to_s} has an update"
+	if checkForUpdate(site)
+		$logger.warn "#{site.uri.host.to_s} has an update!"
 	else
 		$logger.info "#{site.uri.host.to_s} is unchanged"
 	end
