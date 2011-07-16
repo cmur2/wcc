@@ -8,6 +8,7 @@ require 'net/http'
 require 'net/smtp'
 require 'pathname'
 require 'logger'
+require 'iconv'
 
 class Conf
 	include Singleton
@@ -156,6 +157,17 @@ class Site
 	end
 end
 
+def detectEncoding(html)
+	enc = "utf-8"
+	re = Regexp.new('<meta.*charset=([a-zA-Z0-9-]*).*', Regexp::IGNORECASE)
+	match = re.match(html)
+	
+	if match != nil
+		enc = match[1].downcase()
+	end
+	return enc
+end
+
 def checkForUpdate(site)
 	$logger.info "Requesting '#{site.uri.to_s}'"
 	begin
@@ -170,20 +182,29 @@ def checkForUpdate(site)
 	end
 	$logger.info "#{res.code} response received"
 	
+	new_site = res.body
 	new_hash = Digest::MD5.hexdigest(res.body)
+	enc = detectEncoding(new_site)
+	
+	$logger.info "Encoding is '#{enc}'"
+	
+	# convert to utf-8
+	new_site = Iconv.conv('utf-8', enc, new_site)
+	
 	$logger.debug "Compare hashes\n  old: #{site.hash.to_s}\n  new: #{new_hash.to_s}"
 	return false if new_hash == site.hash
 	
 	# save old site to tmp file
-	File.open("/tmp/wcc-#{site.id}.site", "w") { |f| f.write(site.content) }
+	old_site_file = "/tmp/wcc-#{site.id}.site"
+	File.open(old_site_file, "w") { |f| f.write(site.content) }
 	
 	# do update
-	site.hash, site.content = new_hash, res.body
+	site.hash, site.content = new_hash, new_site
 	
 	# diff between OLD and NEW
 	old_label = "OLD (%s)" % File.mtime(Conf.file(site.id + ".md5")).to_s
 	new_label = "NEW (%s)" % Time.now.to_s
-	diff = %x{diff -U 1 --label "#{old_label}" --label "#{new_label}" /tmp/wcc-#{site.id}.site #{Conf.file(site.id + ".site")}}
+	diff = %x{diff -U 1 --label "#{old_label}" --label "#{new_label}" old_site_file #{Conf.file(site.id + ".site")}}
 	
 	Net::SMTP.start('localhost', 25) do |smtp|
 		site.emails.each do |mail|
@@ -208,10 +229,12 @@ class MyFormatter
 	end
 end
 
+# create global logger
 $logger = Logger.new(STDOUT)
 $logger.formatter = MyFormatter.new
 $logger.progname = Conf.tag
 
+# latest flag overrides everything
 $logger.level = Logger::WARN
 $logger.level = Logger::ERROR if Conf.quiet?
 $logger.level = Logger::INFO if Conf.verbose?
