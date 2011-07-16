@@ -219,7 +219,7 @@ def checkForUpdate(site)
 	diff = %x{diff -U 1 --label "#{old_label}" --label "#{new_label}" #{old_site_file} #{Conf.file(site.id + ".site")}}
 	
 	if site.striphtml?
-#		diff = stripHTML(diff)
+		diff = stripHTML(diff)
 	end
 	
 	Net::SMTP.start('localhost', 25) do |smtp|
