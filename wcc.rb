@@ -1,4 +1,4 @@
-#!/usr/bin/ruby -W0
+#!/usr/bin/ruby -KuW0
 
 require 'digest/md5'
 require 'uri'
@@ -109,18 +109,19 @@ class Site
 	
 	def initialize(url, striphtml, emails)
 		@uri = URI.parse(url)
-		@id = Digest::MD5.hexdigest(url.to_s)[0...8]
 		@striphtml = !!striphtml
 		@emails = emails.is_a?(Array) ? emails : [emails]
+		@id = Digest::MD5.hexdigest(url.to_s)[0...8]
 		load_hash
 	end
 	
 	def uri; @uri end
 	def striphtml?; @striphtml end
 	def emails; @emails end
-	def to_s; "%s;%s;%s" % [@uri.to_s, (@striphtml ? 'yes' : 'no'), @emails.join(';')] end
 	def id; @id end
-	def new?; hash.to_s.empty? end
+	
+	def to_s; "%s;%s;%s" % [@uri.to_s, (@striphtml ? 'yes' : 'no'), @emails.join(';')] end
+	
 	def hash; @hash.to_s end
 	def content; load_content if @content.nil?; @content end
 	
@@ -157,6 +158,15 @@ class Site
 		$logger.debug "Save new site content to file '#{file}'"
 		File.open(file, "w") { |f| f.write(@content) }
 	end
+end
+
+def stripHTML(html)
+	# html <tag> eater
+	new = html.gsub(/<[^>]*>/, ' ')
+	
+	# TODO: entity convesion
+	
+	return new
 end
 
 def detectEncoding(html)
@@ -206,7 +216,11 @@ def checkForUpdate(site)
 	# diff between OLD and NEW
 	old_label = "OLD (%s)" % File.mtime(Conf.file(site.id + ".md5")).to_s
 	new_label = "NEW (%s)" % Time.now.to_s
-	diff = %x{diff -U 1 --label "#{old_label}" --label "#{new_label}" old_site_file #{Conf.file(site.id + ".site")}}
+	diff = %x{diff -U 1 --label "#{old_label}" --label "#{new_label}" #{old_site_file} #{Conf.file(site.id + ".site")}}
+	
+	if site.striphtml?
+#		diff = stripHTML(diff)
+	end
 	
 	Net::SMTP.start('localhost', 25) do |smtp|
 		site.emails.each do |mail|
