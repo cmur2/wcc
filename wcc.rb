@@ -42,16 +42,16 @@ class Conf
 		optparse.parse!
 		
 		if @options[:from].to_s.empty?
-			$stderr.puts "FATAL: No sender mail address given. See help."
+			$logger.fatal "No sender mail address given. See help."
 			exit 1
 		end
 		
-		$stderr.puts "WARN: No config file given using default conf file" if ARGV.length == 0 and (!@options[:quiet] or @options[:debug])
+		$logger.warn "No config file given using default conf file" if ARGV.length == 0
 
 		@options[:conf_file] = ARGV[0] || 'conf'
 		
 		if !File.exists?(@options[:conf_file])
-			$stderr.puts "FATAL: Config file '%s' does not exists." % @options[:conf_file]
+			$logger.fatal "Config file '#{@options[:conf_file]}' does not exists."
 			exit 1
 		end
 		
@@ -59,7 +59,7 @@ class Conf
 		Dir.mkdir(@options[:dir]) unless File.directory?(@options[:dir])
 		
 		if(@options[:clean])
-			$stdout.puts "WARN: Clean up hash and diff files" unless @options[:quiet] and !@options[:debug]
+			$logger.warn "Clean up hash and diff files"
 			Dir.foreach(@options[:dir]) do |f|
 				File.delete(@options[:dir] + "/" + f) if f =~ /^.*\.(md5|site)$/
 			end
@@ -74,7 +74,7 @@ class Conf
 		conf_file = Conf.instance.options[:conf_file] if conf_file.nil?
 		@sites = []
 		
-		$stdout.puts "DEBUG: Load sites from '%s'" % conf_file if Conf.debug?
+		$logger.debug "Load sites from '#{conf_file}'"
 		
 		File.open(conf_file).each do |line|
 			# regex to match required config lines; all other lines are ignored
@@ -84,9 +84,9 @@ class Conf
 			end
 		end
 		
-		$stdout.puts "DEBUG: " + @sites.length.to_s + (@sites.length == 1 ? ' site' : ' sites') + " loaded\n" +
+		$logger.debug @sites.length.to_s + (@sites.length == 1 ? ' site' : ' sites') + " loaded\n" +
 			@sites.map { |s| "  " + s.uri.host.to_s + "\n    url: " +
-			s.uri.to_s + "\n    id: " + s.id }.join("\n") if Conf.debug?
+			s.uri.to_s + "\n    id: " + s.id }.join("\n")
 		@sites
 	end
 	
@@ -117,7 +117,7 @@ class Site
 	def uri; @uri end
 	def striphtml?; @striphtml end
 	def emails; @emails end
-	def to_s; @uri.to_s + ';' + (@striphtml ? 'yes' : 'no') + ';' + @emails.join(';') end
+	def to_s; "%s;%s;%s" % [@uri.to_s, (@striphtml ? 'yes' : 'no'), @emails.join(';')] end
 	def id; @id end
 	def new?; hash.to_s.empty? end
 	def hash; @hash.to_s end
@@ -126,17 +126,17 @@ class Site
 	def load_hash
 		file = Conf.file(self.id + ".md5")
 		if File.exists?(file)
-			$stdout.puts "DEBUG: Load hash from file '#{file}'" if Conf.debug?
+			$logger.debug "Load hash from file '#{file}'"
 			File.open(file, "r") { |f| @hash = f.gets; break }
 		else
-			$stdout.puts "INFO: Site #{uri.host} was never checked before." unless Conf.quiet?
+			$logger.info "Site #{uri.host} was never checked before."
 		end
 	end
 	
 	def load_content
 		file = Conf.file(self.id + ".site")
 		if File.exists?(file)
-			$stdout.puts "DEBUG: Read site content from file '#{file}'" if Conf.debug?
+			$logger.debug "Read site content from file '#{file}'"
 			File.open(file, "r") { |f| @content = f.read }
 		end
 	end
@@ -144,43 +144,38 @@ class Site
 	def hash=(hash)
 		@hash = hash
 		file = Conf.file(self.id + ".md5")
-		$stdout.puts "DEBUG: Save new site hash to file '#{file}'" if Conf.debug?
+		$logger.debug "Save new site hash to file '#{file}'"
 		File.open(file, "w") { |f| f.write(@hash) }
 	end
 	
 	def content=(content)
 		@content = content
 		file = Conf.file(self.id + ".site")
-		$stdout.puts "DEBUG: Save new site content to file '#{file}'" if Conf.debug?
+		$logger.debug "Save new site content to file '#{file}'"
 		File.open(file, "w") { |f| f.write(@content) }
 	end
 end
 
 def checkForUpdate(site)
-	$logger.info "Requesting '%s'" % site.uri.to_s
-	$stdout.puts "\nINFO: Requesting '%s'" % site.uri.to_s if Conf.verbose?
+	$logger.info "Requesting '#{site.uri.to_s}'"
 	begin
 		r = Net::HTTP.get_response(site.uri)
 	rescue
-		$logger.error " Cannot connect to '%s': %s" % [site.uri.to_s, $!.to_s]
-		$stderr.puts "ERROR: Cannot connect to '%s': %s" % [site.uri.to_s, $!.to_s]
+		$logger.error " Cannot connect to '#{site.uri.to_s}': #{$!.to_s}"
 		return false
 	end
 	if r.code.to_i != 200
-		$logger.warn "Site %s returned %s code. Ignore." % [site.uri.to_s, r.code.to_s]
-		$stderr.puts "WARN: Site %s returned %s code. Ignore." % [site.uri.to_s, r.code.to_s] unless Conf.quiet?
+		$logger.warn "Site #{site.uri.to_s} returned #{r.code.to_s} code. Ignore."
 		return false
 	end
-	$logger.info "%s response received" % r.code.to_s
-	$stdout.puts "INFO: %s response received" % r.code.to_s if Conf.verbose?
+	$logger.info "#{r.code.to_s} response received"
 	
 	new_hash = Digest::MD5.hexdigest(r.body)
-	$logger.debug "Compare hashes...\n  %s\n  %s" % [new_hash.to_s, site.hash.to_s]
-	$stdout.puts "DEBUG: Compare hashes...\n  %s\n  %s" % [new_hash.to_s, site.hash.to_s] if Conf.debug?
+	$logger.debug "Compare hashes...\n  #{new_hash.to_s}\n  #{site.hash.to_s}"
 	return false if new_hash == site.hash
 	
 	# save old site to tmp file
-	File.open("/tmp/wcc-" + site.id + ".site", "w") { |f| f.write(site.content) }
+	File.open("/tmp/wcc-#{site.id}.site", "w") { |f| f.write(site.content) }
 	
 	# do update
 	site.hash, site.content = new_hash, r.body
@@ -214,11 +209,19 @@ class MyFormatter
 end
 
 $logger = Logger.new(STDOUT)
-$logger.level = Logger::INFO
 $logger.formatter = MyFormatter.new
 $logger.progname = Conf.tag
 
+$logger.level = Logger::WARN
+$logger.level = Logger::ERROR if Conf.quiet?
+$logger.level = Logger::INFO if Conf.verbose?
+$logger.level = Logger::DEBUG if Conf.debug?
+
 Conf.sites.each do |site|
 	updated = checkForUpdate(site)
-	$stdout.puts "%s has %s" % [site.uri.host.to_s, (updated ? 'an update' : 'no update')] unless Conf.quiet?
+	if updated
+		$logger.warn "#{site.uri.host.to_s} has an update"
+	else
+		$logger.info "#{site.uri.host.to_s} is unchanged"
+	end
 end
