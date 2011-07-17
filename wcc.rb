@@ -50,7 +50,7 @@ class Conf
 			exit 1
 		end
 		
-		$logger.warn "No config file given, using default 'conf' file" if ARGV.length == 0
+		$logger.info "No config file given, using default 'conf' file" if ARGV.length == 0
 
 		@options[:conf_file] = ARGV[0] || 'conf'
 		
@@ -245,16 +245,20 @@ class MyFormatter
 	end
 end
 
+
 # create global logger
 $logger = Logger.new(STDOUT)
 $logger.formatter = MyFormatter.new
+# set level before first access to Conf!
+$logger.level = Logger::WARN
 $logger.progname = Conf.tag
 
 # latest flag overrides everything
-$logger.level = Logger::WARN
 $logger.level = Logger::ERROR if Conf.quiet?
 $logger.level = Logger::INFO if Conf.verbose?
 $logger.level = Logger::DEBUG if Conf.debug?
+
+# main
 
 Conf.sites.each do |site|
 	if checkForUpdate(site)
