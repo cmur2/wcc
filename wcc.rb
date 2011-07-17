@@ -10,6 +10,9 @@ require 'pathname'
 require 'logger'
 require 'iconv'
 
+require 'rubygems'
+require 'htmlentities'
+
 class Conf
 	include Singleton
 	
@@ -164,9 +167,8 @@ def stripHTML(html)
 	# html <tag> eater
 	new = html.gsub(/<[^>]*>/, ' ')
 	
-	# TODO: entity convesion
-	
-	return new
+	# decode html entities into unicode (utf-8)
+	HTMLEntities.new.decode(new)
 end
 
 def detectEncoding(html)
