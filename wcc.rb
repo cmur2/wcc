@@ -112,7 +112,7 @@ class Site
 	
 	def initialize(url, striphtml, emails)
 		@uri = URI.parse(url)
-		@striphtml = !!striphtml
+		@striphtml = (striphtml == "yes")
 		@emails = emails.is_a?(Array) ? emails : [emails]
 		@id = Digest::MD5.hexdigest(url.to_s)[0...8]
 		load_hash
