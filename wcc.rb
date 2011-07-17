@@ -214,9 +214,9 @@ def checkForUpdate(site)
 	site.hash, site.content = new_hash, new_site
 	
 	# diff between OLD and NEW
-	old_label = "OLD (%s)" % File.mtime(Conf.file(site.id + ".md5")).to_s
-	new_label = "NEW (%s)" % Time.now.to_s
-	diff = %x{diff -U 1 --label "#{old_label}" --label "#{new_label}" #{old_site_file} #{Conf.file(site.id + ".site")}}
+	old_label = "OLD (%s)" % File.mtime(Conf.file(site.id + ".md5")).strftime('%Y-%m-%d %H:%M:%S %Z')
+	new_label = "NEW (%s)" % Time.now.strftime('%Y-%m-%d %H:%M:%S %Z')
+	diff = %x[diff -U 1 --label "#{old_label}" --label "#{new_label}" #{old_site_file} #{Conf.file(site.id + ".site")}]
 	
 	if site.striphtml?
 		diff = stripHTML(diff)
