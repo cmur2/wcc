@@ -27,7 +27,7 @@ class Conf
 			:tag => 'web change checker2'
 		}
 	
-		optparse = OptionParser.new do|opts|
+		optparse = OptionParser.new do |opts|
 			opts.banner = "Usage: ruby wcc.rb [options] [config-file]"
 			opts.on('-q', '--quiet', 'Show only errors') do @options[:quiet] = true end
 			opts.on('-v', '--verbose', 'Output more information') do @options[:verbose] = true end
@@ -172,13 +172,10 @@ def stripHTML(html)
 end
 
 def detectEncoding(html)
+	# assume utf-8 as default
 	enc = "utf-8"
-	re = Regexp.new('<meta.*charset=([a-zA-Z0-9-]*).*', Regexp::IGNORECASE)
-	match = re.match(html)
-	
-	if match != nil
-		enc = match[1].downcase()
-	end
+	match = Regexp.new('<meta.*charset=([a-zA-Z0-9-]*).*', Regexp::IGNORECASE, 'u').match(html)
+	enc = match[1].downcase() if match != nil
 	return enc
 end
 
@@ -244,7 +241,6 @@ end
 
 class MyFormatter
 	def call(severity, time, progname, msg)
-		#"%s %5s: %s" % [time.strftime('%H:%M:%S'), severity, msg.to_s]
 		"%s: %s\n" % [severity, msg.to_s]
 	end
 end
