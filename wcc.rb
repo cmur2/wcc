@@ -237,6 +237,8 @@ def checkForUpdate(site)
 		end
 	end if Conf.send_mails?
 	
+	system("logger -t '#{Conf.tag}' 'Change at #{site.uri.to_s} (tag #{site.id}) detected'")
+	
 	true
 end
 
