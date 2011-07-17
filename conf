@@ -8,3 +8,5 @@
 #   'site' is a valid URL to be watched for updates
 #   'striphtml' determines (if "yes") that common html entities should be replaced by ascii
 #   'email' is any valid mail adress to be notified on change
+
+http://google.com/;yes;mail@example.com;mail2@example.com
