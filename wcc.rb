@@ -209,12 +209,14 @@ def checkForUpdate(site)
 	old_site_file = "/tmp/wcc-#{site.id}.site"
 	File.open(old_site_file, "w") { |f| f.write(site.content) }
 	
+	# calculate labels before updating
+	old_label = "OLD (%s)" % File.mtime(Conf.file(site.id + ".md5")).strftime('%Y-%m-%d %H:%M:%S %Z')
+	new_label = "NEW (%s)" % Time.now.strftime('%Y-%m-%d %H:%M:%S %Z')
+
 	# do update
 	site.hash, site.content = new_hash, new_site
 	
 	# diff between OLD and NEW
-	old_label = "OLD (%s)" % File.mtime(Conf.file(site.id + ".md5")).strftime('%Y-%m-%d %H:%M:%S %Z')
-	new_label = "NEW (%s)" % Time.now.strftime('%Y-%m-%d %H:%M:%S %Z')
 	diff = %x[diff -U 1 --label "#{old_label}" --label "#{new_label}" #{old_site_file} #{Conf.file(site.id + ".site")}]
 	
 	if site.striphtml?
