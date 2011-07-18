@@ -198,27 +198,15 @@ def checkForUpdate(site)
 	new_site = res.body
 	new_hash = Digest::MD5.hexdigest(res.body)
 	
-	# assume utf-8 default
-	enc = 'utf-8'
-
-	# detect encoding from http header - overrides all
-	re1 = Regexp.new(';\s*charset=([A-Za-z0-9-]*)', Regexp::IGNORECASE, 'u')
-	match = res['content-type'].to_s.match(re1)
-	if match != nil
-		enc = match[1].downcase
-	else
-		# detect encoding from <meta> tag
-		re2 = Regexp.new('<meta.*charset=([a-zA-Z0-9-]*).*', Regexp::IGNORECASE, 'u')
-		match = new_site.match(re2)
-		if match != nil
-			enc = match[1].downcase
-		end
-	end
+	# detect encoding from http header, meta element, default utf-8
+	# do not use utf-8 regex because it will fail on non utf-8 pages
+	encoding = (res['content-type'].to_s.match(/;\s*charset=([A-Za-z0-9-]*)/i).to_a[1] || 
+				new_site.match(/<meta.*charset=([a-zA-Z0-9-]*).*/i).to_a[1]).to_s.downcase || 'utf-8'
 	
-	$logger.info "Encoding is '#{enc}'"
+	$logger.info "Encoding is '#{encoding}'"
 	
 	# convert to utf-8
-	new_site = Iconv.conv('utf-8', enc, new_site)
+	new_site = Iconv.conv('utf-8', encoding, new_site)
 	
 	$logger.debug "Compare hashes\n  old: #{site.hash.to_s}\n  new: #{new_hash.to_s}"
 	return false if new_hash == site.hash
