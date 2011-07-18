@@ -24,7 +24,9 @@ class Conf
 			:dir => '/var/tmp/wcc',
 			:simulate => false,
 			:clean => false,
-			:tag => 'web change checker2'
+			:tag => 'web change checker2',
+			:host => 'localhost',
+			:port => 25
 		}
 	
 		optparse = OptionParser.new do |opts|
