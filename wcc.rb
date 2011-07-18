@@ -45,6 +45,13 @@ class Conf
 		end
 		optparse.parse!
 		
+		$logger.progname = @options[:tag]
+
+		# latest flag overrides everything
+		$logger.level = Logger::ERROR if @options[:quiet]
+		$logger.level = Logger::INFO if @options[:verbose]
+		$logger.level = Logger::DEBUG if @options[:debug]
+		
 		if @options[:from].to_s.empty?
 			$logger.fatal "No sender mail address given! See help."
 			exit 1
@@ -253,12 +260,6 @@ $logger = Logger.new(STDOUT)
 $logger.formatter = MyFormatter.new
 # set level before first access to Conf!
 $logger.level = Logger::WARN
-$logger.progname = Conf.tag
-
-# latest flag overrides everything
-$logger.level = Logger::ERROR if Conf.quiet?
-$logger.level = Logger::INFO if Conf.verbose?
-$logger.level = Logger::DEBUG if Conf.debug?
 
 # main
 
