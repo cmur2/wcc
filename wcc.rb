@@ -175,14 +175,6 @@ class String
 	end
 end
 
-def detectEncoding(html)
-	# assume utf-8 as default
-	enc = "utf-8"
-	match = Regexp.new('<meta.*charset=([a-zA-Z0-9-]*).*', Regexp::IGNORECASE, 'u').match(html)
-	enc = match[1].downcase() if match != nil
-	return enc
-end
-
 def checkForUpdate(site)
 	$logger.info "Requesting '#{site.uri.to_s}'"
 	begin
@@ -199,7 +191,9 @@ def checkForUpdate(site)
 	
 	new_site = res.body
 	new_hash = Digest::MD5.hexdigest(res.body)
-	enc = detectEncoding(new_site)
+	
+	# detect encoding from http header (default utf-8)
+	enc = res['content-type'].to_s.match(/;\s*charset=([A-Za-z0-9-]*)/).to_a[1].downcase || 'utf-8'
 	
 	$logger.info "Encoding is '#{enc}'"
 	
