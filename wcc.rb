@@ -198,8 +198,22 @@ def checkForUpdate(site)
 	new_site = res.body
 	new_hash = Digest::MD5.hexdigest(res.body)
 	
-	# detect encoding from http header (default utf-8)
-	enc = res['content-type'].to_s.match(/;\s*charset=([A-Za-z0-9-]*)/).to_a[1].downcase || 'utf-8'
+	# assume utf-8 default
+	enc = 'utf-8'
+
+	# detect encoding from http header - overrides all
+	re1 = Regexp.new(';\s*charset=([A-Za-z0-9-]*)', Regexp::IGNORECASE, 'u')
+	match = res['content-type'].to_s.match(re1)
+	if match != nil
+		enc = match[1].downcase
+	else
+		# detect encoding from <meta> tag
+		re2 = Regexp.new('<meta.*charset=([a-zA-Z0-9-]*).*', Regexp::IGNORECASE, 'u')
+		match = new_site.match(re2)
+		if match != nil
+			enc = match[1].downcase
+		end
+	end
 	
 	$logger.info "Encoding is '#{enc}'"
 	
