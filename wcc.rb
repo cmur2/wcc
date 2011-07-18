@@ -109,9 +109,6 @@ class Conf
 	
 	# aliases for Conf.instance.options[:option]
 	def self.dir; Conf.instance.options[:dir] end
-	def self.debug?; Conf.instance.options[:debug] end
-	def self.verbose?; (Conf.instance.options[:verbose] and !self.quiet?) or self.debug? end
-	def self.quiet?; Conf.instance.options[:quiet] and !self.debug? end
 	def self.simulate?; Conf.instance.options[:simulate] end
 	def self.tag; Conf.instance.options[:tag] end
 	def self.send_mails?; !Conf.instance.options[:nomails] end
@@ -138,6 +135,7 @@ class Site
 	
 	def to_s; "%s;%s;%s" % [@uri.to_s, (@striphtml ? 'yes' : 'no'), @emails.join(';')] end
 	
+	# invalid hashes are nil and "" - nil.to_s is ""
 	def new?; self.hash.to_s.empty? end
 	def hash; @hash.to_s end
 	def content; load_content if @content.nil?; @content end
