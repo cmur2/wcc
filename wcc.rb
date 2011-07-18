@@ -169,12 +169,10 @@ class Site
 	end
 end
 
-def stripHTML(html)
-	# html <tag> eater
-	new = html.gsub(/<[^>]*>/, ' ')
-	
-	# decode html entities into unicode (utf-8)
-	HTMLEntities.new.decode(new)
+class String
+	def strip_html
+		HTMLEntities.new.decode(self.gsub(/<[^>]*>/, ' '))
+	end
 end
 
 def detectEncoding(html)
@@ -225,9 +223,7 @@ def checkForUpdate(site)
 	# diff between OLD and NEW
 	diff = %x[diff -U 1 --label "#{old_label}" --label "#{new_label}" #{old_site_file} #{Conf.file(site.id + ".site")}]
 	
-	if site.striphtml?
-		diff = stripHTML(diff)
-	end
+	diff = diff.strip_html if site.striphtml?
 	
 	Net::SMTP.start(Conf.host, Conf.port) do |smtp|
 		site.emails.each do |mail|
