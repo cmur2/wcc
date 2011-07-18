@@ -38,6 +38,8 @@ class Conf
 			opts.on('-t', '--tag TAG', 'Sets TAG used in output') do |t| @options[:tag] = t end
 			opts.on('-n', '--no-mails', 'Does not send any emails') do @options[:nomails] = true end
 			opts.on('-f', '--from MAIL', 'Set sender mail address') do |m| @options[:from] = m end
+			opts.on('--host HOST', 'Sets SMTP host') do |h| @options[:host] = h end
+			opts.on('--port PORT', 'Sets SMTP port') do |p| @options[:port] = p end
 			opts.on('-h', '--help', 'Display this screen') do
 				puts opts
 				exit
@@ -105,6 +107,8 @@ class Conf
 	def self.tag; Conf.instance.options[:tag] end
 	def self.send_mails?; !Conf.instance.options[:nomails] end
 	def self.from_mail; Conf.instance.options[:from] end
+	def self.host; Conf.instance.options[:host] end
+	def self.port; Conf.instance.options[:port] end
 end
 
 class Site
@@ -223,7 +227,7 @@ def checkForUpdate(site)
 		diff = stripHTML(diff)
 	end
 	
-	Net::SMTP.start('localhost', 25) do |smtp|
+	Net::SMTP.start(Conf.host, Conf.port) do |smtp|
 		site.emails.each do |mail|
 			msg  = "From: #{Conf.from_mail}\n"
 			msg += "To: #{mail}\n"
