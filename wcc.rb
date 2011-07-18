@@ -24,7 +24,9 @@ class Conf
 			:dir => '/var/tmp/wcc',
 			:simulate => false,
 			:clean => false,
-			:tag => 'web change checker2'
+			:tag => 'web change checker2',
+			:host => 'localhost',
+			:port => 25
 		}
 	
 		optparse = OptionParser.new do |opts|
@@ -38,6 +40,8 @@ class Conf
 			opts.on('-t', '--tag TAG', 'Sets TAG used in output') do |t| @options[:tag] = t end
 			opts.on('-n', '--no-mails', 'Does not send any emails') do @options[:nomails] = true end
 			opts.on('-f', '--from MAIL', 'Set sender mail address') do |m| @options[:from] = m end
+			opts.on('--host HOST', 'Sets SMTP host') do |h| @options[:host] = h end
+			opts.on('--port PORT', 'Sets SMTP port') do |p| @options[:port] = p end
 			opts.on('-h', '--help', 'Display this screen') do
 				puts opts
 				exit
@@ -112,6 +116,8 @@ class Conf
 	def self.tag; Conf.instance.options[:tag] end
 	def self.send_mails?; !Conf.instance.options[:nomails] end
 	def self.from_mail; Conf.instance.options[:from] end
+	def self.host; Conf.instance.options[:host] end
+	def self.port; Conf.instance.options[:port] end
 end
 
 class Site
@@ -132,6 +138,7 @@ class Site
 	
 	def to_s; "%s;%s;%s" % [@uri.to_s, (@striphtml ? 'yes' : 'no'), @emails.join(';')] end
 	
+	def new?; self.hash.to_s.empty? end
 	def hash; @hash.to_s end
 	def content; load_content if @content.nil?; @content end
 	
@@ -170,20 +177,10 @@ class Site
 	end
 end
 
-def stripHTML(html)
-	# html <tag> eater
-	new = html.gsub(/<[^>]*>/, ' ')
-	
-	# decode html entities into unicode (utf-8)
-	HTMLEntities.new.decode(new)
-end
-
-def detectEncoding(html)
-	# assume utf-8 as default
-	enc = "utf-8"
-	match = Regexp.new('<meta.*charset=([a-zA-Z0-9-]*).*', Regexp::IGNORECASE, 'u').match(html)
-	enc = match[1].downcase() if match != nil
-	return enc
+class String
+	def strip_html
+		HTMLEntities.new.decode(self.gsub(/<[^>]*>/, ' '))
+	end
 end
 
 def checkForUpdate(site)
@@ -202,7 +199,9 @@ def checkForUpdate(site)
 	
 	new_site = res.body
 	new_hash = Digest::MD5.hexdigest(res.body)
-	enc = detectEncoding(new_site)
+	
+	# detect encoding from http header (default utf-8)
+	enc = res['content-type'].to_s.match(/;\s*charset=([A-Za-z0-9-]*)/).to_a[1].downcase || 'utf-8'
 	
 	$logger.info "Encoding is '#{enc}'"
 	
@@ -212,25 +211,31 @@ def checkForUpdate(site)
 	$logger.debug "Compare hashes\n  old: #{site.hash.to_s}\n  new: #{new_hash.to_s}"
 	return false if new_hash == site.hash
 	
-	# save old site to tmp file
-	old_site_file = "/tmp/wcc-#{site.id}.site"
-	File.open(old_site_file, "w") { |f| f.write(site.content) }
+	# do not try diff or anything if site was never checked before
+	if site.new?
+		# update content
+		site.hash, site.content = new_hash, new_site
+		
+		# set custom diff message
+		diff = 'Site was first checked so no diff was possible.'
+	else
+		# save old site to tmp file
+		old_site_file = "/tmp/wcc-#{site.id}.site"
+		File.open(old_site_file, "w") { |f| f.write(site.content) }
+		
+		# calculate labels before updating
+		old_label = "OLD (%s)" % File.mtime(Conf.file(site.id + ".md5")).strftime('%Y-%m-%d %H:%M:%S %Z')
+		new_label = "NEW (%s)" % Time.now.strftime('%Y-%m-%d %H:%M:%S %Z')
 	
-	# calculate labels before updating
-	old_label = "OLD (%s)" % File.mtime(Conf.file(site.id + ".md5")).strftime('%Y-%m-%d %H:%M:%S %Z')
-	new_label = "NEW (%s)" % Time.now.strftime('%Y-%m-%d %H:%M:%S %Z')
-
-	# do update
-	site.hash, site.content = new_hash, new_site
-	
-	# diff between OLD and NEW
-	diff = %x[diff -U 1 --label "#{old_label}" --label "#{new_label}" #{old_site_file} #{Conf.file(site.id + ".site")}]
-	
-	if site.striphtml?
-		diff = stripHTML(diff)
+		# do update
+		site.hash, site.content = new_hash, new_site
+		
+		# diff between OLD and NEW
+		diff = %x[diff -U 1 --label "#{old_label}" --label "#{new_label}" #{old_site_file} #{Conf.file(site.id + ".site")}]
+		diff = diff.strip_html if site.striphtml?
 	end
 	
-	Net::SMTP.start('localhost', 25) do |smtp|
+	Net::SMTP.start(Conf.host, Conf.port) do |smtp|
 		site.emails.each do |mail|
 			msg  = "From: #{Conf.from_mail}\n"
 			msg += "To: #{mail}\n"
