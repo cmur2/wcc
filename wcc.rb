@@ -131,6 +131,7 @@ class Site
 	
 	def to_s; "%s;%s;%s" % [@uri.to_s, (@striphtml ? 'yes' : 'no'), @emails.join(';')] end
 	
+	def new?; self.hash.to_s.empty? end
 	def hash; @hash.to_s end
 	def content; load_content if @content.nil?; @content end
 	
@@ -203,21 +204,29 @@ def checkForUpdate(site)
 	$logger.debug "Compare hashes\n  old: #{site.hash.to_s}\n  new: #{new_hash.to_s}"
 	return false if new_hash == site.hash
 	
-	# save old site to tmp file
-	old_site_file = "/tmp/wcc-#{site.id}.site"
-	File.open(old_site_file, "w") { |f| f.write(site.content) }
+	# do not try diff or anything if site was never checked before
+	if site.new?
+		# update content
+		site.hash, site.content = new_hash, new_site
+		
+		# set custom diff message
+		diff = 'Site was first checked so no diff was possible.'
+	else
+		# save old site to tmp file
+		old_site_file = "/tmp/wcc-#{site.id}.site"
+		File.open(old_site_file, "w") { |f| f.write(site.content) }
+		
+		# calculate labels before updating
+		old_label = "OLD (%s)" % File.mtime(Conf.file(site.id + ".md5")).strftime('%Y-%m-%d %H:%M:%S %Z')
+		new_label = "NEW (%s)" % Time.now.strftime('%Y-%m-%d %H:%M:%S %Z')
 	
-	# calculate labels before updating
-	old_label = "OLD (%s)" % File.mtime(Conf.file(site.id + ".md5")).strftime('%Y-%m-%d %H:%M:%S %Z')
-	new_label = "NEW (%s)" % Time.now.strftime('%Y-%m-%d %H:%M:%S %Z')
-
-	# do update
-	site.hash, site.content = new_hash, new_site
-	
-	# diff between OLD and NEW
-	diff = %x[diff -U 1 --label "#{old_label}" --label "#{new_label}" #{old_site_file} #{Conf.file(site.id + ".site")}]
-	
-	diff = diff.strip_html if site.striphtml?
+		# do update
+		site.hash, site.content = new_hash, new_site
+		
+		# diff between OLD and NEW
+		diff = %x[diff -U 1 --label "#{old_label}" --label "#{new_label}" #{old_site_file} #{Conf.file(site.id + ".site")}]
+		diff = diff.strip_html if site.striphtml?
+	end
 	
 	Net::SMTP.start(Conf.host, Conf.port) do |smtp|
 		site.emails.each do |mail|
