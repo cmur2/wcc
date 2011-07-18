@@ -1,4 +1,4 @@
-#!/usr/bin/ruby -W0
+#!/usr/bin/ruby -KuW0
 
 require 'digest/md5'
 require 'uri'
@@ -7,6 +7,11 @@ require 'singleton'
 require 'net/http'
 require 'net/smtp'
 require 'pathname'
+require 'logger'
+require 'iconv'
+
+require 'rubygems'
+require 'htmlentities'
 
 class Conf
 	include Singleton
@@ -22,7 +27,7 @@ class Conf
 			:tag => 'web change checker2'
 		}
 	
-		optparse = OptionParser.new do|opts|
+		optparse = OptionParser.new do |opts|
 			opts.banner = "Usage: ruby wcc.rb [options] [config-file]"
 			opts.on('-q', '--quiet', 'Show only errors') do @options[:quiet] = true end
 			opts.on('-v', '--verbose', 'Output more information') do @options[:verbose] = true end
@@ -30,7 +35,7 @@ class Conf
 			opts.on('-o', '--dir DIR', 'Save required files to DIR') do |dir| @options[:dir] = dir end
 			opts.on('-s', '--simulate', 'Check for update but does not save any data') do @options[:simulate] = true end
 			opts.on('-c', '--clean', 'Removes all hash and diff files') do @options[:clean] = true end
-			opts.on('-t', '--tag TAG', 'Sets a tag used in output') do |t| @options[:tag] = t end
+			opts.on('-t', '--tag TAG', 'Sets TAG used in output') do |t| @options[:tag] = t end
 			opts.on('-n', '--no-mails', 'Does not send any emails') do @options[:nomails] = true end
 			opts.on('-f', '--from MAIL', 'Set sender mail address') do |m| @options[:from] = m end
 			opts.on('-h', '--help', 'Display this screen') do
@@ -41,16 +46,16 @@ class Conf
 		optparse.parse!
 		
 		if @options[:from].to_s.empty?
-			$stderr.puts "FATAL: No sender mail address given. See help."
+			$logger.fatal "No sender mail address given! See help."
 			exit 1
 		end
 		
-		$stderr.puts "WARN: No config file given using default conf file" if ARGV.length == 0 and (!@options[:quiet] or @options[:debug])
+		$logger.info "No config file given, using default 'conf' file" if ARGV.length == 0
 
 		@options[:conf_file] = ARGV[0] || 'conf'
 		
 		if !File.exists?(@options[:conf_file])
-			$stderr.puts "FATAL: Config file '" + @options[:conf_file] + "' does not exists."
+			$logger.fatal "Config file '#{@options[:conf_file]}' does not exist!"
 			exit 1
 		end
 		
@@ -58,7 +63,7 @@ class Conf
 		Dir.mkdir(@options[:dir]) unless File.directory?(@options[:dir])
 		
 		if(@options[:clean])
-			$stdout.puts "WARN: Clean up hash and diff files" unless @options[:quiet] and !@options[:debug]
+			$logger.warn "Cleanup hash and diff files"
 			Dir.foreach(@options[:dir]) do |f|
 				File.delete(@options[:dir] + "/" + f) if f =~ /^.*\.(md5|site)$/
 			end
@@ -73,7 +78,7 @@ class Conf
 		conf_file = Conf.instance.options[:conf_file] if conf_file.nil?
 		@sites = []
 		
-		$stdout.puts "DEBUG: Load sites from '" + conf_file + "'" if Conf.debug?
+		$logger.debug "Load sites from '#{conf_file}'"
 		
 		File.open(conf_file).each do |line|
 			# regex to match required config lines; all other lines are ignored
@@ -83,15 +88,16 @@ class Conf
 			end
 		end
 		
-		$stdout.puts "DEBUG: " + @sites.length.to_s + 
-			(@sites.length == 1 ? ' site' : ' sites') + " loaded\n  " +
-			@sites.map { |s| s.uri.host.to_s + "\n    url: " + 
-			s.uri.to_s + "\n    id: " + s.id }.join("\n  ") if Conf.debug?
+		$logger.debug @sites.length.to_s + (@sites.length == 1 ? ' site' : ' sites') + " loaded\n" +
+			@sites.map { |s| "  " + s.uri.host.to_s + "\n    url: " +
+			s.uri.to_s + "\n    id: " + s.id }.join("\n")
 		@sites
 	end
 	
-	def self.dir; Conf.instance.options[:dir] + "/" end
-	def self.file(path = nil) self.dir + path end
+	def self.file(path = nil) File.join(self.dir, path) end
+	
+	# aliases for Conf.instance.options[:option]
+	def self.dir; Conf.instance.options[:dir] end
 	def self.debug?; Conf.instance.options[:debug] end
 	def self.verbose?; (Conf.instance.options[:verbose] and !self.quiet?) or self.debug? end
 	def self.quiet?; Conf.instance.options[:quiet] and !self.debug? end
@@ -106,84 +112,117 @@ class Site
 	
 	def initialize(url, striphtml, emails)
 		@uri = URI.parse(url)
-		@id = Digest::MD5.hexdigest(url.to_s)[0...8]
-		@striphtml = !!striphtml
+		@striphtml = (striphtml == "yes")
 		@emails = emails.is_a?(Array) ? emails : [emails]
+		@id = Digest::MD5.hexdigest(url.to_s)[0...8]
 		load_hash
 	end
 	
 	def uri; @uri end
 	def striphtml?; @striphtml end
 	def emails; @emails end
-	def to_s; @uri.to_s + ';' + (@striphtml ? 'yes' : 'no') + ';' + @emails.join(';') end
 	def id; @id end
-	def new?; hash.to_s.empty? end
+	
+	def to_s; "%s;%s;%s" % [@uri.to_s, (@striphtml ? 'yes' : 'no'), @emails.join(';')] end
+	
 	def hash; @hash.to_s end
 	def content; load_content if @content.nil?; @content end
 	
 	def load_hash
 		file = Conf.file(self.id + ".md5")
 		if File.exists?(file)
-			$stdout.puts "DEBUG: Load hash from file '" + file + "'" if Conf.debug?
+			$logger.debug "Load hash from file '#{file}'"
 			File.open(file, "r") { |f| @hash = f.gets; break }
 		else
-			$stdout.puts "INFO: Site " + uri.host + " was never checked before." unless Conf.quiet?
-			# @hash is nil
+			$logger.info "Site #{uri.host} was never checked before."
 		end
 	end
 	
 	def load_content
 		file = Conf.file(self.id + ".site")
 		if File.exists?(file)
-			$stdout.puts "DEBUG: Read site content from file '" + file + "'" if Conf.debug?
+			$logger.debug "Read site content from file '#{file}'"
 			File.open(file, "r") { |f| @content = f.read }
 		end
 	end
 	
 	def hash=(hash)
 		@hash = hash
+		return if Conf.simulate?
 		file = Conf.file(self.id + ".md5")
-		$stdout.puts "DEBUG: Save new site hash to file '" + file + "'" if Conf.debug?
+		$logger.debug "Save new site hash to file '#{file}'"
 		File.open(file, "w") { |f| f.write(@hash) }
 	end
 	
 	def content=(content)
 		@content = content
+		return if Conf.simulate?
 		file = Conf.file(self.id + ".site")
-		$stdout.puts "DEBUG: Save new site content to file '" + file + "'" if Conf.debug?
+		$logger.debug "Save new site content to file '#{file}'"
 		File.open(file, "w") { |f| f.write(@content) }
 	end
 end
 
-def checkForUpdate(site)
-	$stdout.puts "\nINFO: Requesting '" + site.uri.to_s + "'" if Conf.verbose?
-	begin
-		r = Net::HTTP.get_response(site.uri)
-	rescue
-		$stderr.puts "ERROR: Cannot connect to '" + site.uri.to_s + "': " + $!.to_s
-		return false
-	end
-	if r.code.to_i != 200
-		$stderr.puts  "WARN: Site " + site.uri.to_s + " returned " + r.code.to_s + " code. Ignore." unless Conf.quiet?
-		return false
-	end
-	$stdout.puts "INFO: " + r.code.to_s + " response received" if Conf.verbose?
+def stripHTML(html)
+	# html <tag> eater
+	new = html.gsub(/<[^>]*>/, ' ')
 	
-	new_hash = Digest::MD5.hexdigest(r.body)
-	$stdout.puts "DEBUG: Compare hashes...\n  " + new_hash.to_s + "\n  " + site.hash.to_s if Conf.debug?
+	# decode html entities into unicode (utf-8)
+	HTMLEntities.new.decode(new)
+end
+
+def detectEncoding(html)
+	# assume utf-8 as default
+	enc = "utf-8"
+	match = Regexp.new('<meta.*charset=([a-zA-Z0-9-]*).*', Regexp::IGNORECASE, 'u').match(html)
+	enc = match[1].downcase() if match != nil
+	return enc
+end
+
+def checkForUpdate(site)
+	$logger.info "Requesting '#{site.uri.to_s}'"
+	begin
+		res = Net::HTTP.get_response(site.uri)
+	rescue
+		$logger.error "Cannot connect to '#{site.uri.to_s}': #{$!.to_s}"
+		return false
+	end
+	if not res.kind_of?(Net::HTTPOK)
+		$logger.warn "Site #{site.uri.to_s} returned #{res.code} code, skipping it."
+		return false
+	end
+	$logger.info "#{res.code} response received"
+	
+	new_site = res.body
+	new_hash = Digest::MD5.hexdigest(res.body)
+	enc = detectEncoding(new_site)
+	
+	$logger.info "Encoding is '#{enc}'"
+	
+	# convert to utf-8
+	new_site = Iconv.conv('utf-8', enc, new_site)
+	
+	$logger.debug "Compare hashes\n  old: #{site.hash.to_s}\n  new: #{new_hash.to_s}"
 	return false if new_hash == site.hash
 	
 	# save old site to tmp file
-	File.open("/tmp/wcc-" + site.id + ".site", "w") { |f| f.write(site.content) }
-		
+	old_site_file = "/tmp/wcc-#{site.id}.site"
+	File.open(old_site_file, "w") { |f| f.write(site.content) }
+	
+	# calculate labels before updating
+	old_label = "OLD (%s)" % File.mtime(Conf.file(site.id + ".md5")).strftime('%Y-%m-%d %H:%M:%S %Z')
+	new_label = "NEW (%s)" % Time.now.strftime('%Y-%m-%d %H:%M:%S %Z')
+
 	# do update
-	site.hash, site.content = new_hash, r.body
+	site.hash, site.content = new_hash, new_site
 	
 	# diff between OLD and NEW
-	old_label = "OLD (%s)" % File.mtime(Conf.file(site.id + ".md5")).to_s
-	new_label = "NEW (%s)" % Time.now.to_s
-	diff = %x{diff -U 1 --label "#{old_label}" --label "#{new_label}" /tmp/wcc-#{site.id}.site #{Conf.file(site.id + ".site")}}
-		
+	diff = %x[diff -U 1 --label "#{old_label}" --label "#{new_label}" #{old_site_file} #{Conf.file(site.id + ".site")}]
+	
+	if site.striphtml?
+		diff = stripHTML(diff)
+	end
+	
 	Net::SMTP.start('localhost', 25) do |smtp|
 		site.emails.each do |mail|
 			msg  = "From: #{Conf.from_mail}\n"
@@ -193,13 +232,40 @@ def checkForUpdate(site)
 			msg += "Change at #{site.uri.to_s} - diff follows:\n\n"
 			msg += diff
 			
-			smtp.send_message msg, Conf.from_mail, [mail]
+			smtp.send_message msg, Conf.from_mail, mail
 		end
 	end if Conf.send_mails?
+	
+	system("logger -t '#{Conf.tag}' 'Change at #{site.uri.to_s} (tag #{site.id}) detected'")
 	
 	true
 end
 
+class MyFormatter
+	def call(severity, time, progname, msg)
+		"%s: %s\n" % [severity, msg.to_s]
+	end
+end
+
+
+# create global logger
+$logger = Logger.new(STDOUT)
+$logger.formatter = MyFormatter.new
+# set level before first access to Conf!
+$logger.level = Logger::WARN
+$logger.progname = Conf.tag
+
+# latest flag overrides everything
+$logger.level = Logger::ERROR if Conf.quiet?
+$logger.level = Logger::INFO if Conf.verbose?
+$logger.level = Logger::DEBUG if Conf.debug?
+
+# main
+
 Conf.sites.each do |site|
-	$stdout.puts site.uri.host.to_s + ' has ' + (checkForUpdate(site) ? 'an update.' : 'no update') unless Conf.quiet?
+	if checkForUpdate(site)
+		$logger.warn "#{site.uri.host.to_s} has an update!"
+	else
+		$logger.info "#{site.uri.host.to_s} is unchanged"
+	end
 end

@@ -6,5 +6,7 @@
 #
 # where
 #   'site' is a valid URL to be watched for updates
-#   'striphtml' determines (if "yes") that common html entities should be replaced by ascii
-#   'email' is any valid mail adress to be notified on change
+#   'striphtml' if "yes" will eliminate html <tags> and replace html entities (i.e. &amp;) with unicode
+#   'email' is any valid mail address to be notified on change
+
+http://google.com/;yes;mail@example.com;mail2@example.com
