@@ -196,7 +196,6 @@ def checkForUpdate(site)
 	$logger.info "#{res.code} response received"
 	
 	new_site = res.body
-	new_hash = Digest::MD5.hexdigest(res.body)
 	
 	# detect encoding from http header, meta element, default utf-8
 	# do not use utf-8 regex because it will fail on non utf-8 pages
@@ -210,6 +209,7 @@ def checkForUpdate(site)
 	
 	# strip html _before_ diffing
 	new_site = new_site.strip_html if site.striphtml?
+	new_hash = Digest::MD5.hexdigest(res.body)
 	
 	$logger.debug "Compare hashes\n  old: #{site.hash.to_s}\n  new: #{new_hash.to_s}"
 	return false if new_hash == site.hash
