@@ -9,6 +9,7 @@ require 'net/smtp'
 require 'pathname'
 require 'logger'
 require 'iconv'
+require 'base64'
 
 require 'rubygems'
 require 'htmlentities'
@@ -242,9 +243,14 @@ def checkForUpdate(site)
 			msg  = "From: #{Conf.from_mail}\n"
 			msg += "To: #{mail}\n"
 			msg += "Subject: [#{Conf.tag}] #{site.uri.host} changed\n"
+			msg += "Content-Type: text/plain; charset=\"utf-8\"\n"
+			msg += "Content-Transfer-Encoding: base64\n"
 			msg += "\n"
-			msg += "Change at #{site.uri.to_s} - diff follows:\n\n"
-			msg += diff
+			
+			content  = "Change at #{site.uri.to_s} - diff follows:\n\n"
+			content += diff
+			
+			msg += Base64.encode64(content)
 			
 			smtp.send_message msg, Conf.from_mail, mail
 		end
