@@ -208,6 +208,9 @@ def checkForUpdate(site)
 	# convert to utf-8
 	new_site = Iconv.conv('utf-8', encoding, new_site)
 	
+	# strip html _before_ diffing
+	new_site = new_site.strip_html if site.striphtml?
+	
 	$logger.debug "Compare hashes\n  old: #{site.hash.to_s}\n  new: #{new_hash.to_s}"
 	return false if new_hash == site.hash
 	
@@ -232,7 +235,6 @@ def checkForUpdate(site)
 		
 		# diff between OLD and NEW
 		diff = %x[diff -U 1 --label "#{old_label}" --label "#{new_label}" #{old_site_file} #{Conf.file(site.id + ".site")}]
-		diff = diff.strip_html if site.striphtml?
 	end
 	
 	Net::SMTP.start(Conf.host, Conf.port) do |smtp|
