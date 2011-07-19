@@ -209,7 +209,7 @@ def checkForUpdate(site)
 	
 	# strip html _before_ diffing
 	new_site = new_site.strip_html if site.striphtml?
-	new_hash = Digest::MD5.hexdigest(res.body)
+	new_hash = Digest::MD5.hexdigest(new_site)
 	
 	$logger.debug "Compare hashes\n  old: #{site.hash.to_s}\n  new: #{new_hash.to_s}"
 	return false if new_hash == site.hash
