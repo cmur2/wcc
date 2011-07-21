@@ -15,7 +15,8 @@ on command line using '-f'. Additionally a configuration file name (default is '
 in current directory) which defines the websites to check can be specified there.
 
 An example crontab entry that runs wcc every 10 minutes might look like this:
-> */10 *  * * *   root    cd /path/to/wcc;./wcc.rb -q -f "root@example.com"
+
+	*/10 *  * * *   root    cd /path/to/wcc;./wcc.rb -q -f "root@example.com"
 
 The '-q' flag is important to suppress any output below the ERROR log level!
 It is recommended to place 'wcc.rb' and 'conf' within an separate directory and
@@ -29,7 +30,7 @@ on some gems (currently one but number will grow):
 
 * htmlentities (preferably 4.3.0)
 
-Install the listed gems via 'gem install **name**'.
+Install the listed gems via 'sudo gem install *name*'.
 
 Old Implementations
 -------------------
