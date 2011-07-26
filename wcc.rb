@@ -10,6 +10,7 @@ require 'pathname'
 require 'logger'
 require 'iconv'
 require 'base64'
+require 'yaml'
 
 require 'rubygems'
 require 'htmlentities'
@@ -25,13 +26,13 @@ class Conf
 			:dir => '/var/tmp/wcc',
 			:simulate => false,
 			:clean => false,
-			:tag => 'web change checker2',
+			:tag => 'wcc',
 			:host => 'localhost',
 			:port => 25
 		}
 	
 		optparse = OptionParser.new do |opts|
-			opts.banner = "Usage: ruby wcc.rb [options] [config-file]"
+			opts.banner = "Usage: ruby wcc.rb [options] [config-yaml-file]"
 			opts.on('-q', '--quiet', 'Show only errors') do @options[:quiet] = true end
 			opts.on('-v', '--verbose', 'Output more information') do @options[:verbose] = true end
 			opts.on('-d', '--debug', 'Enable debug mode') do @options[:debug] = true end
@@ -62,9 +63,9 @@ class Conf
 			exit 1
 		end
 		
-		$logger.info "No config file given, using default 'conf' file" if ARGV.length == 0
+		$logger.info "No config file given, using default 'conf.yml' file" if ARGV.length == 0
 
-		@options[:conf_file] = ARGV[0] || 'conf'
+		@options[:conf_file] = ARGV[0] || 'conf.yml'
 		
 		if !File.exists?(@options[:conf_file])
 			$logger.fatal "Config file '#{@options[:conf_file]}' does not exist!"
@@ -92,13 +93,13 @@ class Conf
 		
 		$logger.debug "Load sites from '#{conf_file}'"
 		
-		File.open(conf_file).each do |line|
-			# regex to match required config lines; all other lines are ignored
-			if line =~ /^[^#]*?;.*?[;.*?]+;?/
-				conf_line = line.strip.split(';')
-				@sites << Site.new(conf_line[0], conf_line[1], conf_line[2, conf_line.length])
-			end
-		end
+		# may be false if file is empty
+		yaml = YAML.load_file(conf_file)
+		
+		yaml['sites'].to_a.each do |yaml_site|
+			puts yaml_site.inspect
+			@sites << Site.new(yaml_site['url'], yaml_site['strip_html'] || '', yaml_site['emails'] || '')
+		end if yaml
 		
 		$logger.debug @sites.length.to_s + (@sites.length == 1 ? ' site' : ' sites') + " loaded\n" +
 			@sites.map { |s| "  " + s.uri.host.to_s + "\n    url: " +
