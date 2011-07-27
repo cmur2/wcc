@@ -97,8 +97,8 @@ class Conf
 		yaml = YAML.load_file(conf_file)
 		
 		yaml['sites'].to_a.each do |yaml_site|
-			puts yaml_site.inspect
-			@sites << Site.new(yaml_site['url'], yaml_site['strip_html'] || '', yaml_site['emails'] || '')
+			#puts yaml_site.inspect
+			@sites << Site.new(yaml_site['url'], yaml_site['strip_html'] || false, yaml_site['emails'] || [])
 		end if yaml
 		
 		$logger.debug @sites.length.to_s + (@sites.length == 1 ? ' site' : ' sites') + " loaded\n" +
@@ -122,9 +122,9 @@ end
 class Site
 	attr_accessor :hash, :content
 	
-	def initialize(url, striphtml, emails)
+	def initialize(url, strip_html, emails)
 		@uri = URI.parse(url)
-		@striphtml = (striphtml == "yes")
+		@striphtml = strip_html
 		@emails = emails.is_a?(Array) ? emails : [emails]
 		@id = Digest::MD5.hexdigest(url.to_s)[0...8]
 		load_hash

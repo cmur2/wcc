@@ -1,3 +1,5 @@
+# web-change-checker
+
 sites:
   - url: http://google.com/
     strip_html: yes
