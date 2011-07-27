@@ -51,7 +51,7 @@ class Conf
 		end
 		optparse.parse!
 		
-		$logger.progname = @options[:tag]
+		$logger.progname = 'wcc'
 
 		# latest flag overrides everything
 		$logger.level = Logger::ERROR if @options[:quiet]
