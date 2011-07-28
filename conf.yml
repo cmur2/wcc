@@ -1,5 +1,15 @@
 # web-change-checker
 
+conf:
+  from_addr: root@localhost
+#  use_syslog: yes
+#  cache_dir: /var/tmp/wcc
+#  tag: wcc
+#  email:
+#    smtp:
+#      host: localhost
+#      port: 25
+
 sites:
   - url: http://google.com/
     strip_html: yes

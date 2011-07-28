@@ -19,18 +19,13 @@ class Conf
 	include Singleton
 	
 	def initialize 
+		# create options only containing logging defaults
 		@options = {
-			:verbose => false, 
-			:debug => false, 
-			:quiet => false, 
-			:dir => '/var/tmp/wcc',
-			:simulate => false,
-			:clean => false,
-			:tag => 'wcc',
-			:host => 'localhost',
-			:port => 25
+			:verbose => false,
+			:debug => false,
+			:quiet => false
 		}
-	
+		
 		optparse = OptionParser.new do |opts|
 			opts.banner = "Usage: ruby wcc.rb [options] [config-yaml-file]"
 			opts.on('-q', '--quiet', 'Show only errors') do @options[:quiet] = true end
@@ -49,6 +44,7 @@ class Conf
 				exit
 			end
 		end
+		# and populate with the commandline options
 		optparse.parse!
 		
 		$logger.progname = 'wcc'
@@ -57,18 +53,45 @@ class Conf
 		$logger.level = Logger::ERROR if @options[:quiet]
 		$logger.level = Logger::INFO if @options[:verbose]
 		$logger.level = Logger::DEBUG if @options[:debug]
-		
-		if @options[:from].to_s.empty?
-			$logger.fatal "No sender mail address given! See help."
-			exit 1
-		end
-		
+
 		$logger.info "No config file given, using default 'conf.yml' file" if ARGV.length == 0
 
 		@options[:conf_file] = ARGV[0] || 'conf.yml'
 		
 		if !File.exists?(@options[:conf_file])
 			$logger.fatal "Config file '#{@options[:conf_file]}' does not exist!"
+			exit 1
+		end
+		
+		# load conf from YAML
+		conf_file = @options[:conf_file]
+		conf_options = {}
+		
+		$logger.debug "Load config from '#{conf_file}'"
+		
+		# may be false if file is empty
+		yaml = YAML.load_file(conf_file)
+		yaml_conf = yaml['conf']
+		
+		#puts yaml_conf.inspect
+		if yaml_conf
+			conf_options[:from] = yaml_conf['from_addr'] if yaml_conf['from_addr']
+		end
+		
+		# finally determine the programs options
+		# hierarchy of importance (override) is:
+		#   cmdline > config > hardcoded defaults
+		@options = {
+			:simulate => false,
+			:clean => false,
+			:dir => '/var/tmp/wcc',
+			:tag => 'wcc',
+			:host => 'localhost',
+			:port => 25
+		}.merge(conf_options).merge(@options)
+		
+		if @options[:from].to_s.empty?
+			$logger.fatal "No sender mail address given! See help."
 			exit 1
 		end
 		
@@ -88,7 +111,7 @@ class Conf
 	def self.sites
 		return @sites unless @sites.nil?
 		
-		conf_file = Conf.instance.options[:conf_file] if conf_file.nil?
+		conf_file = Conf.instance.options[:conf_file]
 		@sites = []
 		
 		$logger.debug "Load sites from '#{conf_file}'"
