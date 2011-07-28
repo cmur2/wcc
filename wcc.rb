@@ -12,6 +12,7 @@ require 'iconv'
 require 'base64'
 require 'yaml'
 
+# ruby gem dependencies
 require 'rubygems'
 require 'htmlentities'
 
@@ -36,7 +37,7 @@ class Conf
 			opts.on('-c', '--clean', 'Removes all hash and diff files') do @options[:clean] = true end
 			opts.on('-t', '--tag TAG', 'Sets TAG used in output') do |t| @options[:tag] = t end
 			opts.on('-n', '--no-mails', 'Does not send any emails') do @options[:nomails] = true end
-			opts.on('-f', '--from MAIL', 'Set sender mail address') do |m| @options[:from] = m end
+			opts.on('-f', '--from MAIL', 'Set sender mail address') do |m| @options[:from_mail] = m end
 			opts.on('--host HOST', 'Sets SMTP host') do |h| @options[:host] = h end
 			opts.on('--port PORT', 'Sets SMTP port') do |p| @options[:port] = p end
 			opts.on('-h', '--help', 'Display this screen') do
@@ -75,7 +76,7 @@ class Conf
 		
 		#puts yaml_conf.inspect
 		if yaml_conf
-			conf_options[:from] = yaml_conf['from_addr'] if yaml_conf['from_addr']
+			conf_options[:from_mail] = yaml_conf['from_addr'] if yaml_conf['from_addr']
 		end
 		
 		# finally determine the programs options
@@ -90,7 +91,7 @@ class Conf
 			:port => 25
 		}.merge(conf_options).merge(@options)
 		
-		if @options[:from].to_s.empty?
+		if @options[:from_mail].to_s.empty?
 			$logger.fatal "No sender mail address given! See help."
 			exit 1
 		end
@@ -137,7 +138,7 @@ class Conf
 	def self.simulate?; Conf.instance.options[:simulate] end
 	def self.tag; Conf.instance.options[:tag] end
 	def self.send_mails?; !Conf.instance.options[:nomails] end
-	def self.from_mail; Conf.instance.options[:from] end
+	def self.from_mail; Conf.instance.options[:from_mail] end
 	def self.host; Conf.instance.options[:host] end
 	def self.port; Conf.instance.options[:port] end
 end
