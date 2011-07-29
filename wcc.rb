@@ -19,8 +19,13 @@ require 'htmlentities'
 class Conf
 	include Singleton
 	
-	def [](key); @options[key.to_sym] || Conf.default[key.to_sym]end
-	def []=(key, val); @options[key.to_sym] = val unless val.nil? end
+	# use Conf like a hash containing all options
+	def [](key)
+		@options[key.to_sym] || Conf.default[key.to_sym]
+	end
+	def []=(key, val)
+		@options[key.to_sym] = val unless val.nil?
+	end
 	
 	def self.default
 		@default_conf ||= {
@@ -85,7 +90,8 @@ class Conf
 			if yaml['email'].is_a?(Hash)
 				if yaml['email']['smtp'].is_a?(Hash)
 					@options[:host] ||= yaml['email']['smtp']['host']
-					@options[:port] ||= yaml['email']['smtp']['port'].to_i
+					# yaml parser should provide an integer here
+					@options[:port] ||= yaml['email']['smtp']['port']
 				end
 			end
 		end
@@ -108,7 +114,7 @@ class Conf
 		if(self[:clean])
 			$logger.warn "Cleanup hash and diff files"
 			Dir.foreach(self[:dir]) do |f|
-				File.delete(self[:dir] + "/" + f) if f =~ /^.*\.(md5|site)$/
+				File.delete(self.file(f)) if f =~ /^.*\.(md5|site)$/
 			end
 		end
 	end
@@ -136,7 +142,6 @@ class Conf
 	end
 	
 	def self.file(path = nil) File.join(self[:dir], path) end
-	def self.dir; self[:dir] end
 	def self.simulate?; self[:simulate] end
 	def self.send_mails?; !self[:nomails] end
 	def self.[](key); Conf.instance[key] end
