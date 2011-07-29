@@ -263,9 +263,12 @@ def checkForUpdate(site)
 		diff = %x[diff -U 1 --label "#{old_label}" --label "#{new_label}" #{old_site_file} #{Conf.file(site.id + ".site")}]
 	end
 	
+	# email adress without trailing 'domain.org'
+	from_name = Conf[:from_mail].split("@")[0...-1].join("@")
+	
 	Net::SMTP.start(Conf[:host], Conf[:port]) do |smtp|
 		site.emails.each do |mail|
-			msg  = "From: #{Conf[:from_mail]}\n"
+			msg  = "From: \"#{from_name}\" <#{Conf[:from_mail]}>\n"
 			msg += "To: #{mail}\n"
 			msg += "Subject: [#{Conf[:tag]}] #{site.uri.host} changed\n"
 			msg += "Content-Type: text/plain; charset=\"utf-8\"\n"
