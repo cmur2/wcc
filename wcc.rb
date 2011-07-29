@@ -77,6 +77,11 @@ class Conf
 		#puts yaml_conf.inspect
 		if yaml_conf
 			conf_options[:from_mail] = yaml_conf['from_addr'] if yaml_conf['from_addr']
+			conf_options[:dir] = yaml_conf['cache_dir'] if yaml_conf['cache_dir']
+			conf_options[:tag] = yaml_conf['tag'] if yaml_conf['tag']
+			
+			conf_options[:host] = yaml_conf['email']['smtp']['host'] if yaml_conf['email']['smtp']['host']
+			conf_options[:port] = yaml_conf['email']['smtp']['port'] if yaml_conf['email']['smtp']['port']
 		end
 		
 		# finally determine the programs options
