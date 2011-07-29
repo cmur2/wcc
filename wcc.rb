@@ -122,16 +122,14 @@ class Conf
 	def self.sites
 		return @sites unless @sites.nil?
 		
-		conf_file = Conf[:conf]
 		@sites = []
 		
-		$logger.debug "Load sites from '#{conf_file}'"
+		$logger.debug "Load sites from '#{Conf[:conf]}'"
 		
 		# may be false if file is empty
-		yaml = YAML.load_file(conf_file)
+		yaml = YAML.load_file(Conf[:conf])
 		
 		yaml['sites'].to_a.each do |yaml_site|
-			#puts yaml_site.inspect
 			@sites << Site.new(yaml_site['url'], yaml_site['strip_html'] || false, yaml_site['emails'] || [])
 		end if yaml
 		
