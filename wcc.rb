@@ -97,7 +97,7 @@ class Conf
 		
 		if self[:show_config]
 			Conf.default.merge(@options).each do |k,v|
-				puts "  #{k.to_s} => #{v.to_s}"
+				puts "  #{k.to_s} => #{self[k]}"
 			end
 			exit 0
 		end
