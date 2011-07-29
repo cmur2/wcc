@@ -26,7 +26,6 @@ class Conf
 		@default_conf ||= {
 			:verbose => false,
 			:debug => false,
-			:quiet => false,
 			:simulate => false,
 			:clean => false,
 			:dir => '/var/tmp/wcc',
@@ -41,7 +40,6 @@ class Conf
 		
 		OptionParser.new do |opts|
 			opts.banner = "Usage: ruby wcc.rb [options] [config-yaml-file]"
-			opts.on('-q', '--quiet', 'Show only errors') do self[:quiet] = true end
 			opts.on('-v', '--verbose', 'Output more information') do self[:verbose] = true end
 			opts.on('-d', '--debug', 'Enable debug mode') do self[:debug] = true end
 			opts.on('-o', '--dir DIR', 'Save required files to DIR') do |dir| self[:dir] = dir end
@@ -62,7 +60,7 @@ class Conf
 		$logger.progname = 'wcc'
 
 		# latest flag overrides everything
-		$logger.level = Logger::ERROR if self[:quiet]
+		$logger.level = Logger::ERROR
 		$logger.level = Logger::INFO if self[:verbose]
 		$logger.level = Logger::DEBUG if self[:debug]
 
