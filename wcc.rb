@@ -295,12 +295,9 @@ class MyFormatter
 	end
 end
 
-
 # create global logger
 $logger = Logger.new(STDOUT)
 $logger.formatter = MyFormatter.new
-# set level before first access to Conf!
-$logger.level = Logger::WARN
 
 # main
 
