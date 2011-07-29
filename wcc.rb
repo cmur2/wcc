@@ -19,105 +19,106 @@ require 'htmlentities'
 class Conf
 	include Singleton
 	
-	def initialize 
-		# create options only containing logging defaults
-		@options = {
+	def [](key); @options[key.to_sym] || Conf.default[key.to_sym]end
+	def []=(key, val); @options[key.to_sym] = val unless val.nil? end
+	
+	def self.default
+		@default_conf ||= {
 			:verbose => false,
 			:debug => false,
-			:quiet => false
-		}
-		
-		optparse = OptionParser.new do |opts|
-			opts.banner = "Usage: ruby wcc.rb [options] [config-yaml-file]"
-			opts.on('-q', '--quiet', 'Show only errors') do @options[:quiet] = true end
-			opts.on('-v', '--verbose', 'Output more information') do @options[:verbose] = true end
-			opts.on('-d', '--debug', 'Enable debug mode') do @options[:debug] = true end
-			opts.on('-o', '--dir DIR', 'Save required files to DIR') do |dir| @options[:dir] = dir end
-			opts.on('-s', '--simulate', 'Check for update but does not save any data') do @options[:simulate] = true end
-			opts.on('-c', '--clean', 'Removes all hash and diff files') do @options[:clean] = true end
-			opts.on('-t', '--tag TAG', 'Sets TAG used in output') do |t| @options[:tag] = t end
-			opts.on('-n', '--no-mails', 'Does not send any emails') do @options[:nomails] = true end
-			opts.on('-f', '--from MAIL', 'Set sender mail address') do |m| @options[:from_mail] = m end
-			opts.on('--host HOST', 'Sets SMTP host') do |h| @options[:host] = h end
-			opts.on('--port PORT', 'Sets SMTP port') do |p| @options[:port] = p end
-			opts.on('-h', '--help', 'Display this screen') do
-				puts opts
-				exit
-			end
-		end
-		# and populate with the commandline options
-		optparse.parse!
-		
-		$logger.progname = 'wcc'
-
-		# latest flag overrides everything
-		$logger.level = Logger::ERROR if @options[:quiet]
-		$logger.level = Logger::INFO if @options[:verbose]
-		$logger.level = Logger::DEBUG if @options[:debug]
-
-		$logger.info "No config file given, using default 'conf.yml' file" if ARGV.length == 0
-
-		@options[:conf_file] = ARGV[0] || 'conf.yml'
-		
-		if !File.exists?(@options[:conf_file])
-			$logger.fatal "Config file '#{@options[:conf_file]}' does not exist!"
-			exit 1
-		end
-		
-		# load conf from YAML
-		conf_file = @options[:conf_file]
-		conf_options = {}
-		
-		$logger.debug "Load config from '#{conf_file}'"
-		
-		# may be false if file is empty
-		yaml = YAML.load_file(conf_file)
-		yaml_conf = yaml['conf']
-		
-		#puts yaml_conf.inspect
-		if yaml_conf
-			conf_options[:from_mail] = yaml_conf['from_addr'] if yaml_conf['from_addr']
-			conf_options[:dir] = yaml_conf['cache_dir'] if yaml_conf['cache_dir']
-			conf_options[:tag] = yaml_conf['tag'] if yaml_conf['tag']
-			
-			conf_options[:host] = yaml_conf['email']['smtp']['host'] if yaml_conf['email']['smtp']['host']
-			conf_options[:port] = yaml_conf['email']['smtp']['port'] if yaml_conf['email']['smtp']['port']
-		end
-		
-		# finally determine the programs options
-		# hierarchy of importance (override) is:
-		#   cmdline > config > hardcoded defaults
-		@options = {
+			:quiet => false,
 			:simulate => false,
 			:clean => false,
 			:dir => '/var/tmp/wcc',
 			:tag => 'wcc',
 			:host => 'localhost',
 			:port => 25
-		}.merge(conf_options).merge(@options)
+		}
+	end
+	
+	def initialize
+		@options = {}
 		
-		if @options[:from_mail].to_s.empty?
+		OptionParser.new do |opts|
+			opts.banner = "Usage: ruby wcc.rb [options] [config-yaml-file]"
+			opts.on('-q', '--quiet', 'Show only errors') do self[:quiet] = true end
+			opts.on('-v', '--verbose', 'Output more information') do self[:verbose] = true end
+			opts.on('-d', '--debug', 'Enable debug mode') do self[:debug] = true end
+			opts.on('-o', '--dir DIR', 'Save required files to DIR') do |dir| self[:dir] = dir end
+			opts.on('-s', '--simulate', 'Check for update but does not save any data') do self[:simulate] = true end
+			opts.on('-c', '--clean', 'Removes all hash and diff files') do self[:clean] = true end
+			opts.on('-t', '--tag TAG', 'Sets TAG used in output') do |t| self[:tag] = t end
+			opts.on('-n', '--no-mails', 'Does not send any emails') do self[:nomails] = true end
+			opts.on('-f', '--from MAIL', 'Set sender mail address') do |m| self[:from_mail] = m end
+			opts.on('--host HOST', 'Sets SMTP host') do |h| self[:host] = h end
+			opts.on('--port PORT', 'Sets SMTP port') do |p| self[:port] = p end
+			opts.on('--show-config', 'Show config after loading config file.') do self[:show_config] = true end
+			opts.on('-h', '-?', '--help', 'Display this screen') do
+				puts opts
+				exit
+			end
+		end.parse!
+		
+		$logger.progname = 'wcc'
+
+		# latest flag overrides everything
+		$logger.level = Logger::ERROR if self[:quiet]
+		$logger.level = Logger::INFO if self[:verbose]
+		$logger.level = Logger::DEBUG if self[:debug]
+
+		$logger.info "No config file given, using default 'conf.yml' file" if ARGV.length == 0
+
+		self[:conf] = ARGV[0] || 'conf.yml'
+		
+		if !File.exists?(self[:conf])
+			$logger.fatal "Config file '#{self[:conf]}' does not exist!"
+			exit 1
+		end
+		
+		$logger.debug "Load config from '#{self[:conf]}'"
+		
+		# may be false if file is empty
+		yaml = YAML.load_file(self[:conf])
+		if yaml.is_a?(Hash) and (yaml = yaml['conf']).is_a?(Hash)
+			@options[:from_mail] ||= yaml['from_addr']
+			@options[:dir] ||= yaml['dir']
+			@options[:tag] ||= yaml['tag']
+			
+			if yaml['email'].is_a?(Hash)
+				if yaml['email']['smtp'].is_a?(Hash)
+					@options[:host] ||= yaml['email']['smtp']['host']
+					@options[:port] ||= yaml['email']['smtp']['port'].to_i
+				end
+			end
+		end
+		
+		if self[:from_mail].to_s.empty?
 			$logger.fatal "No sender mail address given! See help."
 			exit 1
 		end
 		
-		# create dir for hash files
-		Dir.mkdir(@options[:dir]) unless File.directory?(@options[:dir])
+		if self[:show_config]
+			Conf.default.merge(@options).each do |k,v|
+				puts "  #{k.to_s} => #{v.to_s}"
+			end
+			exit 0
+		end
 		
-		if(@options[:clean])
+		# create dir for hash files
+		Dir.mkdir(self[:dir]) unless File.directory?(self[:dir])
+		
+		if(self[:clean])
 			$logger.warn "Cleanup hash and diff files"
-			Dir.foreach(@options[:dir]) do |f|
-				File.delete(@options[:dir] + "/" + f) if f =~ /^.*\.(md5|site)$/
+			Dir.foreach(self[:dir]) do |f|
+				File.delete(self[:dir] + "/" + f) if f =~ /^.*\.(md5|site)$/
 			end
 		end
 	end
 	
-	def options; @options end
-	
 	def self.sites
 		return @sites unless @sites.nil?
 		
-		conf_file = Conf.instance.options[:conf_file]
+		conf_file = Conf[:conf]
 		@sites = []
 		
 		$logger.debug "Load sites from '#{conf_file}'"
@@ -136,16 +137,11 @@ class Conf
 		@sites
 	end
 	
-	def self.file(path = nil) File.join(self.dir, path) end
-	
-	# aliases for Conf.instance.options[:option]
-	def self.dir; Conf.instance.options[:dir] end
-	def self.simulate?; Conf.instance.options[:simulate] end
-	def self.tag; Conf.instance.options[:tag] end
-	def self.send_mails?; !Conf.instance.options[:nomails] end
-	def self.from_mail; Conf.instance.options[:from_mail] end
-	def self.host; Conf.instance.options[:host] end
-	def self.port; Conf.instance.options[:port] end
+	def self.file(path = nil) File.join(self[:dir], path) end
+	def self.dir; self[:dir] end
+	def self.simulate?; self[:simulate] end
+	def self.send_mails?; !self[:nomails] end
+	def self.[](key); Conf.instance[key] end
 end
 
 class Site
@@ -268,11 +264,11 @@ def checkForUpdate(site)
 		diff = %x[diff -U 1 --label "#{old_label}" --label "#{new_label}" #{old_site_file} #{Conf.file(site.id + ".site")}]
 	end
 	
-	Net::SMTP.start(Conf.host, Conf.port) do |smtp|
+	Net::SMTP.start(Conf[:host], Conf[:port]) do |smtp|
 		site.emails.each do |mail|
-			msg  = "From: #{Conf.from_mail}\n"
+			msg  = "From: #{Conf[:from_mail]}\n"
 			msg += "To: #{mail}\n"
-			msg += "Subject: [#{Conf.tag}] #{site.uri.host} changed\n"
+			msg += "Subject: [#{Conf[:tag]}] #{site.uri.host} changed\n"
 			msg += "Content-Type: text/plain; charset=\"utf-8\"\n"
 			msg += "Content-Transfer-Encoding: base64\n"
 			msg += "\n"
@@ -282,11 +278,11 @@ def checkForUpdate(site)
 			
 			msg += Base64.encode64(content)
 			
-			smtp.send_message msg, Conf.from_mail, mail
+			smtp.send_message msg, Conf[:from_mail], mail
 		end
 	end if Conf.send_mails?
 	
-	system("logger -t '#{Conf.tag}' 'Change at #{site.uri.to_s} (tag #{site.id}) detected'")
+	system("logger -t '#{Conf[:tag]}' 'Change at #{site.uri.to_s} (tag #{site.id}) detected'")
 	
 	true
 end
