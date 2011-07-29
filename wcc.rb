@@ -145,8 +145,6 @@ class Conf
 end
 
 class Site
-	attr_accessor :hash, :content
-	
 	def initialize(url, strip_html, emails)
 		@uri = URI.parse(url)
 		@striphtml = strip_html
