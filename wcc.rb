@@ -203,7 +203,9 @@ end
 
 class String
 	def strip_html
-		HTMLEntities.new.decode(self.gsub(/<[^>]*>/, ' '))
+		# remove all HTML <tags> with at least 1 character name
+		# and decode all HTML entities into UTF-8 characters
+		HTMLEntities.new.decode(self.gsub(/<[^>]+>/, ' '))
 	end
 end
 
