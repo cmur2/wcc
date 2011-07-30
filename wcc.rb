@@ -134,8 +134,8 @@ class Conf
 		end if yaml
 		
 		$logger.debug @sites.length.to_s + (@sites.length == 1 ? ' site' : ' sites') + " loaded\n" +
-			@sites.map { |s| "  " + s.uri.host.to_s + "\n    url: " +
-			s.uri.to_s + "\n    id: " + s.id }.join("\n")
+			@sites.map { |s| "  #{s.uri.host.to_s}\n    url: #{s.uri.to_s}\n    id: #{s.id}" }.join("\n")
+		
 		@sites
 	end
 	
@@ -167,37 +167,37 @@ class Site
 	def content; load_content if @content.nil?; @content end
 	
 	def load_hash
-		file = Conf.file(self.id + ".md5")
+		file = Conf.file(self.id + '.md5')
 		if File.exists?(file)
 			$logger.debug "Load hash from file '#{file}'"
-			File.open(file, "r") { |f| @hash = f.gets; break }
+			File.open(file, 'r') { |f| @hash = f.gets; break }
 		else
 			$logger.info "Site #{uri.host} was never checked before."
 		end
 	end
 	
 	def load_content
-		file = Conf.file(self.id + ".site")
+		file = Conf.file(self.id + '.site')
 		if File.exists?(file)
 			$logger.debug "Read site content from file '#{file}'"
-			File.open(file, "r") { |f| @content = f.read }
+			File.open(file, 'r') { |f| @content = f.read }
 		end
 	end
 	
 	def hash=(hash)
 		@hash = hash
 		return if Conf.simulate?
-		file = Conf.file(self.id + ".md5")
+		file = Conf.file(self.id + '.md5')
 		$logger.debug "Save new site hash to file '#{file}'"
-		File.open(file, "w") { |f| f.write(@hash) }
+		File.open(file, 'w') { |f| f.write(@hash) }
 	end
 	
 	def content=(content)
 		@content = content
 		return if Conf.simulate?
-		file = Conf.file(self.id + ".site")
+		file = Conf.file(self.id + '.site')
 		$logger.debug "Save new site content to file '#{file}'"
-		File.open(file, "w") { |f| f.write(@content) }
+		File.open(file, 'w') { |f| f.write(@content) }
 	end
 end
 
@@ -246,7 +246,7 @@ def checkForUpdate(site)
 		site.hash, site.content = new_hash, new_site
 		
 		# set custom diff message
-		diff = 'Site was first checked so no diff was possible.'
+		diff = "Site was first checked so no diff was possible."
 	else
 		# save old site to tmp file
 		old_site_file = "/tmp/wcc-#{site.id}.site"
