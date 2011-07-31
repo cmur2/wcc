@@ -252,7 +252,7 @@ def checkForUpdate(site)
 	else
 		# save old site to tmp file
 		old_site_file = "/tmp/wcc-#{site.id}.site"
-		File.open(old_site_file, "w") { |f| f.write(site.content) }
+		File.open(old_site_file, 'w') { |f| f.write(site.content) }
 		
 		# calculate labels before updating
 		old_label = "OLD (%s)" % File.mtime(Conf.file(site.id + ".md5")).strftime('%Y-%m-%d %H:%M:%S %Z')
@@ -282,7 +282,7 @@ def checkForUpdate(site)
 			
 			msg += Base64.encode64(content)
 			
-			smtp.send_message msg, Conf[:from_mail], mail
+			smtp.send_message(msg, Conf[:from_mail], mail)
 		end
 	end if Conf.send_mails?
 	
