@@ -35,7 +35,7 @@ Setup
 First you need to install ruby (preferably version 1.8.x) and rubygems since wcc depends
 on some gems (currently one but number will grow):
 
-* htmlentities (preferably 4.3.0)
+* [htmlentities](http://htmlentities.rubyforge.org/) (preferably 4.3.0)
 
 Install the listed gems via 'sudo gem install *name*'.
 
