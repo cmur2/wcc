@@ -35,8 +35,9 @@ class Conf
 			:clean => false,
 			:dir => '/var/tmp/wcc',
 			:tag => 'wcc',
-			:host => 'localhost',
-			:port => 25
+			:mailer => 'smtp',
+			:smtp_host => 'localhost',
+			:smtp_port => 25
 		}
 	end
 	
@@ -89,7 +90,7 @@ class Conf
 			
 			if yaml['email'].is_a?(Hash)
 				if yaml['email']['smtp'].is_a?(Hash)
-					@options[:email] = 'smtp'
+					@options[:mailer] = 'smtp'
 					@options[:smtp_host] ||= yaml['email']['smtp']['host']
 					# yaml parser should provide an integer here
 					@options[:smtp_port] ||= yaml['email']['smtp']['port']
@@ -134,7 +135,7 @@ class Conf
 			@sites << Site.new(
 				yaml_site['url'], 
 				yaml_site['strip_html'] || false, 
-				yaml_site['emails'].map{ |m| MailAddress.new(m) } || [])
+				yaml_site['emails'].map { |m| MailAddress.new(m) } || [])
 		end if yaml
 		
 		$logger.debug @sites.length.to_s + (@sites.length == 1 ? ' site' : ' sites') + " loaded\n" +
@@ -146,7 +147,7 @@ class Conf
 	def self.mailer
 		if @mailer.nil?
 			# smtp mailer
-			if Conf[:email] == 'smtp'
+			if Conf[:mailer] == 'smtp'
 				@mailer = SmtpMailer.new(Conf[:smtp_host], Conf[:smtp_port])
 			end
 		end
@@ -316,7 +317,7 @@ def checkForUpdate(site)
 	else
 		# save old site to tmp file
 		old_site_file = "/tmp/wcc-#{site.id}.site"
-		File.open(old_site_file, "w") { |f| f.write(site.content) }
+		File.open(old_site_file, 'w') { |f| f.write(site.content) }
 		
 		# calculate labels before updating
 		old_label = "OLD (%s)" % File.mtime(Conf.file(site.id + ".md5")).strftime('%Y-%m-%d %H:%M:%S %Z')
@@ -326,7 +327,7 @@ def checkForUpdate(site)
 		site.hash, site.content = new_hash, new_site
 		
 		# diff between OLD and NEW
-		diff = %x[diff -U 1 --label "#{old_label}" --label "#{new_label}" #{old_site_file} #{Conf.file(site.id + ".site")}]
+		diff = %x[diff -U 1 --label "#{old_label}" --label "#{new_label}" #{old_site_file} #{Conf.file(site.id + '.site')}]
 	end
 	
 	Mail.new(
