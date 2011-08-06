@@ -89,9 +89,10 @@ class Conf
 			
 			if yaml['email'].is_a?(Hash)
 				if yaml['email']['smtp'].is_a?(Hash)
-					@options[:host] ||= yaml['email']['smtp']['host']
+					@options[:email] = 'smtp'
+					@options[:smtp_host] ||= yaml['email']['smtp']['host']
 					# yaml parser should provide an integer here
-					@options[:port] ||= yaml['email']['smtp']['port']
+					@options[:smtp_port] ||= yaml['email']['smtp']['port']
 				end
 			end
 		end
@@ -130,13 +131,26 @@ class Conf
 		yaml = YAML.load_file(Conf[:conf])
 		
 		yaml['sites'].to_a.each do |yaml_site|
-			@sites << Site.new(yaml_site['url'], yaml_site['strip_html'] || false, yaml_site['emails'] || [])
+			@sites << Site.new(
+				yaml_site['url'], 
+				yaml_site['strip_html'] || false, 
+				yaml_site['emails'].map{ |m| MailAddress.new(m) } || [])
 		end if yaml
 		
 		$logger.debug @sites.length.to_s + (@sites.length == 1 ? ' site' : ' sites') + " loaded\n" +
 			@sites.map { |s| "  #{s.uri.host.to_s}\n    url: #{s.uri.to_s}\n    id: #{s.id}" }.join("\n")
 		
 		@sites
+	end
+	
+	def self.mailer
+		if @mailer.nil?
+			# smtp mailer
+			if Conf[:email] == 'smtp'
+				@mailer = SmtpMailer.new(Conf[:smtp_host], Conf[:smtp_port])
+			end
+		end
+		@mailer
 	end
 	
 	def self.file(path = nil) File.join(self[:dir], path) end
@@ -178,27 +192,78 @@ class Site
 	
 	def load_content
 		file = Conf.file(self.id + '.site')
-		if File.exists?(file)
-			$logger.debug "Read site content from file '#{file}'"
-			File.open(file, 'r') { |f| @content = f.read }
-		end
+		File.open(file, 'r') { |f| @content = f.read } if File.exists?(file)
 	end
 	
 	def hash=(hash)
 		@hash = hash
-		return if Conf.simulate?
-		file = Conf.file(self.id + '.md5')
-		$logger.debug "Save new site hash to file '#{file}'"
-		File.open(file, 'w') { |f| f.write(@hash) }
+		File.open(Conf.file(self.id + '.md5'), 'w') { |f| f.write(@hash) } unless Conf.simulate?
 	end
 	
 	def content=(content)
 		@content = content
-		return if Conf.simulate?
-		file = Conf.file(self.id + '.site')
-		$logger.debug "Save new site content to file '#{file}'"
-		File.open(file, 'w') { |f| f.write(@content) }
+		File.open(Conf.file(self.id + '.site'), 'w') { |f| f.write(@content) } unless Conf.simulate?
 	end
+end
+
+class Mail
+	def initialize(title, message, options = {})
+		@title = title
+		@message = message
+		@options = {:from => MailAddress.new(Conf[:from_mail])}
+		@options[:from] = MailAddress.new(options[:from]) unless options[:from].nil?
+	end
+	def title; @title end
+	def text; @message end
+	def send(tos = [])
+		Conf.mailer.send(self, @options[:from], tos)
+	end
+end
+
+class SmtpMailer
+	def initialize(host, port)
+		@host = host
+		@port = port
+	end
+	def send(mail, from, to = [])
+		Net::SMTP.start(@host, @port) do |smtp|
+			to.each do |toaddr|
+				msg  = "From: #{from}\n"
+				msg += "To: #{toaddr}\n"
+				msg += "Subject: #{mail.title.gsub(/\s+/, ' ')}\n"
+				msg += "Content-Type: text/plain; charset=\"utf-8\"\n"
+				msg += "Content-Transfer-Encoding: base64\n"
+				msg += "\n"
+				msg += Base64.encode64(mail.text)
+				
+				smtp.send_message msg, from.address, toaddr.address
+			end
+		end
+	rescue
+		$logger.fatal "Cannot send mails at #{@host}:#{@port} : #{$!.to_s}"
+	end
+end
+
+class MailAddress
+	def initialize(email)
+		email = email.to_s if email.is_a?(MailAddress)
+		@email = email.strip
+	end
+	
+	def name
+		if @email =~ /^[\w\s]+<.+@[^@]+>$/
+			@email.gsub(/<.+?>/, '').strip
+		else
+			@email.split("@")[0...-1].join("@")
+		end
+	end
+
+	def address
+		return @email.match(/<([^>]+@[^@>]+)>/)[1] if @email =~ /^[\w\s]+<.+@[^@]+>$/
+		@email
+	end
+	
+	def to_s; @email end
 end
 
 class String
@@ -221,7 +286,6 @@ def checkForUpdate(site)
 		$logger.warn "Site #{site.uri.to_s} returned #{res.code} code, skipping it."
 		return false
 	end
-	$logger.info "#{res.code} response received"
 	
 	new_site = res.body
 	
@@ -252,7 +316,7 @@ def checkForUpdate(site)
 	else
 		# save old site to tmp file
 		old_site_file = "/tmp/wcc-#{site.id}.site"
-		File.open(old_site_file, 'w') { |f| f.write(site.content) }
+		File.open(old_site_file, "w") { |f| f.write(site.content) }
 		
 		# calculate labels before updating
 		old_label = "OLD (%s)" % File.mtime(Conf.file(site.id + ".md5")).strftime('%Y-%m-%d %H:%M:%S %Z')
@@ -265,26 +329,10 @@ def checkForUpdate(site)
 		diff = %x[diff -U 1 --label "#{old_label}" --label "#{new_label}" #{old_site_file} #{Conf.file(site.id + ".site")}]
 	end
 	
-	# email adress without trailing 'domain.org'
-	from_name = Conf[:from_mail].split("@")[0...-1].join("@")
-	
-	Net::SMTP.start(Conf[:host], Conf[:port]) do |smtp|
-		site.emails.each do |mail|
-			msg  = "From: \"#{from_name}\" <#{Conf[:from_mail]}>\n"
-			msg += "To: #{mail}\n"
-			msg += "Subject: [#{Conf[:tag]}] #{site.uri.host} changed\n"
-			msg += "Content-Type: text/plain; charset=\"utf-8\"\n"
-			msg += "Content-Transfer-Encoding: base64\n"
-			msg += "\n"
-			
-			content  = "Change at #{site.uri.to_s} - diff follows:\n\n"
-			content += diff
-			
-			msg += Base64.encode64(content)
-			
-			smtp.send_message(msg, Conf[:from_mail], mail)
-		end
-	end if Conf.send_mails?
+	Mail.new(
+		"[#{Conf[:tag]}] #{site.uri.host} changed",
+		"Change at #{site.uri.to_s} - diff follows:\n\n#{diff}"
+		).send(site.emails) if Conf.send_mails?
 	
 	system("logger -t '#{Conf[:tag]}' 'Change at #{site.uri.to_s} (tag #{site.id}) detected'")
 	
