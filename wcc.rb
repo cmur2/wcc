@@ -16,6 +16,8 @@ require 'yaml'
 require 'rubygems'
 require 'htmlentities'
 
+DIFF_TIME_FMT = '%Y-%m-%d %H:%M:%S %Z'
+
 class Conf
 	include Singleton
 	
@@ -320,8 +322,8 @@ def checkForUpdate(site)
 		File.open(old_site_file, 'w') { |f| f.write(site.content) }
 		
 		# calculate labels before updating
-		old_label = "OLD (%s)" % File.mtime(Conf.file(site.id + ".md5")).strftime('%Y-%m-%d %H:%M:%S %Z')
-		new_label = "NEW (%s)" % Time.now.strftime('%Y-%m-%d %H:%M:%S %Z')
+		old_label = "OLD (%s)" % File.mtime(Conf.file(site.id + ".md5")).strftime(DIFF_TIME_FMT)
+		new_label = "NEW (%s)" % Time.now.strftime(DIFF_TIME_FMT)
 	
 		# do update
 		site.hash, site.content = new_hash, new_site
