@@ -11,6 +11,7 @@ require 'logger'
 require 'iconv'
 require 'base64'
 require 'yaml'
+require 'tempfile'
 
 # ruby gem dependencies
 require 'rubygems'
@@ -318,8 +319,9 @@ def checkForUpdate(site)
 		diff = "Site was first checked so no diff was possible."
 	else
 		# save old site to tmp file
-		old_site_file = "/tmp/wcc-#{site.id}.site"
-		File.open(old_site_file, 'w') { |f| f.write(site.content) }
+		old_site_file = Tempfile.new("wcc-#{site.id}-")
+		old_site_file.write(site.content)
+		old_site_file.close
 		
 		# calculate labels before updating
 		old_label = "OLD (%s)" % File.mtime(Conf.file(site.id + ".md5")).strftime(DIFF_TIME_FMT)
@@ -329,7 +331,7 @@ def checkForUpdate(site)
 		site.hash, site.content = new_hash, new_site
 		
 		# diff between OLD and NEW
-		diff = %x[diff -U 1 --label "#{old_label}" --label "#{new_label}" #{old_site_file} #{Conf.file(site.id + '.site')}]
+		diff = %x[diff -U 1 --label "#{old_label}" --label "#{new_label}" #{old_site_file.path} #{Conf.file(site.id + '.site')}]
 	end
 	
 	Mail.new(
