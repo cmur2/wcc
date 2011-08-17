@@ -210,6 +210,31 @@ class Site
 	end
 end
 
+class MailAddress
+	def initialize(email)
+		email = email.to_s if email.is_a?(MailAddress)
+		@email = email.strip
+	end
+	
+	def name
+		if @email =~ /^[\w\s]+<.+@[^@]+>$/
+			@email.gsub(/<.+?>/, '').strip
+		else
+			@email.split("@")[0...-1].join("@")
+		end
+	end
+
+	def address
+		if @email =~ /^[\w\s]+<.+@[^@]+>$/
+			@email.match(/<([^>]+@[^@>]+)>/)[1]
+		else
+			@email
+		end
+	end
+	
+	def to_s; @email end
+end
+
 class Mail
 	def initialize(title, message, options = {})
 		@title = title
@@ -246,31 +271,6 @@ class SmtpMailer
 	rescue
 		$logger.fatal "Cannot send mails at #{@host}:#{@port} : #{$!.to_s}"
 	end
-end
-
-class MailAddress
-	def initialize(email)
-		email = email.to_s if email.is_a?(MailAddress)
-		@email = email.strip
-	end
-	
-	def name
-		if @email =~ /^[\w\s]+<.+@[^@]+>$/
-			@email.gsub(/<.+?>/, '').strip
-		else
-			@email.split("@")[0...-1].join("@")
-		end
-	end
-
-	def address
-		if @email =~ /^[\w\s]+<.+@[^@]+>$/
-			@email.match(/<([^>]+@[^@>]+)>/)[1]
-		else
-			@email
-		end
-	end
-	
-	def to_s; @email end
 end
 
 class String
