@@ -273,6 +273,24 @@ class SmtpMailer
 	end
 end
 
+class Filter
+	@@filters = {}
+	
+	def self.add(id, &block)
+		@@filters[id] = block
+	end
+	
+	def self.accept(data, *filters)
+		$logger.info("Testing with filters: #{filters.join(', ')}")
+		@@filters.select { |id,block| filters.include?(id) }.each do |id,block|
+			if not block.call(data):
+				$logger.debug("Filter #{id} failed!")
+				return false
+			end
+		end
+	end
+end
+
 class String
 	def strip_html
 		# remove all HTML <tags> with at least 1 character name
