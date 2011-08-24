@@ -17,3 +17,5 @@ sites:
     emails:
       - mail@example.com
       - mail2@example.com
+    filters:
+      - test

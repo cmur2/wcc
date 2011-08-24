@@ -146,7 +146,8 @@ class Conf
 			@sites << Site.new(
 				yaml_site['url'], 
 				yaml_site['strip_html'] || false, 
-				yaml_site['emails'].map { |m| MailAddress.new(m) } || [])
+				yaml_site['emails'].map { |m| MailAddress.new(m) } || [],
+				(yaml_site['filters'] || []).map { |f| f.to_sym })
 		end if yaml
 		
 		$logger.debug @sites.length.to_s + (@sites.length == 1 ? ' site' : ' sites') + " loaded\n" +
@@ -172,10 +173,11 @@ class Conf
 end
 
 class Site
-	def initialize(url, strip_html, emails)
+	def initialize(url, strip_html, emails, filters)
 		@uri = URI.parse(url)
 		@striphtml = strip_html
 		@emails = emails.is_a?(Array) ? emails : [emails]
+		@filters = filters.is_a?(Array) ? filters : [filters]
 		@id = Digest::MD5.hexdigest(url.to_s)[0...8]
 		load_hash
 	end
@@ -183,6 +185,7 @@ class Site
 	def uri; @uri end
 	def striphtml?; @striphtml end
 	def emails; @emails end
+	def filters; @filters end
 	def id; @id end
 	
 	def to_s; "%s;%s;%s" % [@uri.to_s, (@striphtml ? 'yes' : 'no'), @emails.join(';')] end
@@ -289,14 +292,15 @@ class Filter
 		@@filters[id] = block
 	end
 	
-	def self.accept(data, *filters)
-		$logger.info("Testing with filters: #{filters.join(', ')}")
+	def self.accept(data, filters)
+		$logger.info "Testing with filters: #{filters.join(', ')}"
 		@@filters.select { |id,block| filters.include?(id) }.each do |id,block|
 			if not block.call(data):
-				$logger.debug("Filter #{id} failed!")
+				$logger.info "Filter #{id} failed!"
 				return false
 			end
 		end
+		true
 	end
 end
 
@@ -363,6 +367,8 @@ def checkForUpdate(site)
 		# diff between OLD and NEW
 		diff = %x[diff -U 1 --label "#{old_label}" --label "#{new_label}" #{old_site_file.path} #{Conf.file(site.id + '.site')}]
 	end
+	
+	return false if not Filter.accept(diff, site.filters)
 	
 	Mail.new(
 		"[#{Conf[:tag]}] #{site.uri.host} changed",
