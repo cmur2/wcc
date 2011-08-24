@@ -5,6 +5,7 @@ conf:
 #  use_syslog: yes
 #  cache_dir: /var/tmp/wcc
 #  tag: wcc
+#  filterd: ./filter.d
 #  email:
 #    smtp:
 #      host: localhost

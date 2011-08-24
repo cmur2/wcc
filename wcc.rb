@@ -40,6 +40,7 @@ class Conf
 			:dir => '/var/tmp/wcc',
 			:tag => 'wcc',
 			:syslog => false,
+			:filterd => './filter.d',
 			:mailer => 'smtp',
 			:smtp_host => 'localhost',
 			:smtp_port => 25
@@ -93,6 +94,7 @@ class Conf
 			@options[:dir] ||= yaml['cache_dir']
 			@options[:tag] ||= yaml['tag']
 			@options[:syslog] ||= yaml['use_syslog']
+			@options[:filterd] ||= yaml['filterd']
 			
 			if yaml['email'].is_a?(Hash)
 				if yaml['email']['smtp'].is_a?(Hash)
@@ -125,6 +127,9 @@ class Conf
 				File.delete(self.file(f)) if f =~ /^.*\.(md5|site)$/
 			end
 		end
+		
+		# read filter.d
+		Dir[File.join(self[:filterd], '*.rb')].each { |file| require file }
 	end
 	
 	def self.sites
@@ -280,6 +285,7 @@ class Filter
 	@@filters = {}
 	
 	def self.add(id, &block)
+		$logger.info "Adding filter '#{id}'"
 		@@filters[id] = block
 	end
 	
