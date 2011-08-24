@@ -36,8 +36,10 @@ class Conf
 			:debug => false,
 			:simulate => false,
 			:clean => false,
+			:nomails => false,
 			:dir => '/var/tmp/wcc',
 			:tag => 'wcc',
+			:syslog => false,
 			:mailer => 'smtp',
 			:smtp_host => 'localhost',
 			:smtp_port => 25
@@ -88,8 +90,9 @@ class Conf
 		yaml = YAML.load_file(self[:conf])
 		if yaml.is_a?(Hash) and (yaml = yaml['conf']).is_a?(Hash)
 			@options[:from_mail] ||= yaml['from_addr']
-			@options[:dir] ||= yaml['dir']
+			@options[:dir] ||= yaml['cache_dir']
 			@options[:tag] ||= yaml['tag']
+			@options[:syslog] ||= yaml['use_syslog']
 			
 			if yaml['email'].is_a?(Hash)
 				if yaml['email']['smtp'].is_a?(Hash)
@@ -360,7 +363,7 @@ def checkForUpdate(site)
 		"Change at #{site.uri.to_s} - diff follows:\n\n#{diff}"
 		).send(site.emails) if Conf.send_mails?
 	
-	system("logger -t '#{Conf[:tag]}' 'Change at #{site.uri.to_s} (tag #{site.id}) detected'")
+	system("logger -t '#{Conf[:tag]}' 'Change at #{site.uri.to_s} (tag #{site.id}) detected'") if Conf[:syslog]
 	
 	true
 end
