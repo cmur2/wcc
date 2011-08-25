@@ -143,11 +143,23 @@ class Conf
 		yaml = YAML.load_file(Conf[:conf])
 		
 		yaml['sites'].to_a.each do |yaml_site|
+			filterrefs = []
+			(yaml_site['filters'] || []).each do |entry|
+				if entry.is_a?(Hash)
+					# hash containing only one key (filter id),
+					# the value is the argument hash
+					id = entry.keys[0]
+					filterrefs << FilterRef.new(id, entry[id])
+				else entry.is_a?(String)
+					filterrefs << FilterRef.new(entry, {})
+				end
+			end
+
 			@sites << Site.new(
 				yaml_site['url'], 
 				yaml_site['strip_html'] || false, 
 				yaml_site['emails'].map { |m| MailAddress.new(m) } || [],
-				(yaml_site['filters'] || []).map { |f| f.to_sym })
+				filterrefs)
 		end if yaml
 		
 		$logger.debug @sites.length.to_s + (@sites.length == 1 ? ' site' : ' sites') + " loaded\n" +
@@ -170,6 +182,18 @@ class Conf
 	def self.simulate?; self[:simulate] end
 	def self.send_mails?; !self[:nomails] end
 	def self.[](key); Conf.instance[key] end
+end
+
+class FilterRef
+	def initialize(id, arguments)
+		@id = id
+		@arguments = arguments
+	end
+	
+	def id; @id end
+	def arguments; @arguments end
+	
+	def to_s; @id end
 end
 
 class Site
@@ -293,10 +317,20 @@ class Filter
 	end
 	
 	def self.accept(data, filters)
+		return true if filters.nil?
+		
 		$logger.info "Testing with filters: #{filters.join(', ')}"
-		@@filters.select { |id,block| filters.include?(id) }.each do |id,block|
-			if not block.call(data):
-				$logger.info "Filter #{id} failed!"
+		
+		filters.each do |filterref|
+			block = @@filters[filterref.id]
+			
+			if block.nil?
+				$logger.error "Requested filter '#{filterref.id}' not found, skipping it."
+				next
+			end
+			
+			if not block.call(data, filterref.arguments)
+				$logger.info "Filter #{filterref.id} failed!"
 				return false
 			end
 		end
