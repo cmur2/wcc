@@ -19,3 +19,4 @@ sites:
       - mail2@example.com
     filters:
       - test
+      - paramtest: {number: 5}
