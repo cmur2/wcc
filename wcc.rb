@@ -369,7 +369,12 @@ def checkForUpdate(site)
 	$logger.info "Encoding is '#{encoding}'"
 	
 	# convert to utf-8
-	new_site = Iconv.conv('utf-8', encoding, new_site)
+	begin
+		new_site = Iconv.conv('utf-8', encoding, new_site)
+	rescue
+		$logger.error "Cannot convert site from '#{encoding}': #{$!.to_s}"
+		return false
+	end
 	
 	# strip html _before_ diffing
 	new_site = new_site.strip_html if site.striphtml?
