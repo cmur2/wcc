@@ -351,11 +351,11 @@ def checkForUpdate(site)
 	begin
 		res = Net::HTTP.get_response(site.uri)
 	rescue
-		$logger.error "Cannot connect to '#{site.uri.to_s}': #{$!.to_s}"
+		$logger.error "Cannot connect to #{site.uri.to_s} : #{$!.to_s}"
 		return false
 	end
 	if not res.kind_of?(Net::HTTPOK)
-		$logger.warn "Site #{site.uri.to_s} returned #{res.code} code, skipping it."
+		$logger.error "Site #{site.uri.to_s} returned #{res.code} code, skipping it."
 		return false
 	end
 	
