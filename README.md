@@ -14,19 +14,29 @@ Usage
 -----
 
 The web-change-checker ruby script can be either invoked by hand or
-automatically via *cron* on a server environment since it. It contains
-a shebang line for '/usr/bin/ruby'.
+automatically via *cron* on a server environment since it contains a shebang
+line for '/usr/bin/ruby'.
 
-On calling this script you need at least provide the 'From:' mail address
-on command line using '-f'. Additionally a configuration file name (default is 'conf'
-in current directory) which defines the websites to check can be specified there.
+For using wcc you need to specify some options:
+
+* either via the command line (see `wcc.rb -h`)
+* or in a configuration file in [YAML](https://secure.wikimedia.org/wikipedia/en/wiki/YAML) format
+
+The location of the configuration file (usually called 'conf.yml' or something like this)
+can itself be given on command line as last argument. Each option has an hard-coded default
+(e.g. the configuration file name is assumed to be './conf.yml'). Command line options
+overwrite configuration file entries.
+
+The core option is the From: mail address and the SMTP configuration for sending emails.
+It is highly encouraged to use the configuration file for all rare changing things
+(even because you have to specify the list of tracked sites there anyways).
 
 An example crontab entry that runs wcc every 10 minutes might look like this:
 
-	*/10 *  * * *   root    cd /path/to/wcc;./wcc.rb -q -f "root@example.com"
+	*/10 *  * * *   root    cd /path/to/wcc;./wcc.rb
 
-The '-q' flag is important to suppress any output below the ERROR log level!
-It is recommended to place 'wcc.rb' and 'conf' within an separate directory and
+By default wcc only outputs ERROR messages to avoid your cron daemon spammin' around.
+It is recommended to place 'wcc.rb' and 'conf.yml' within an separate directory and
 use `cd` in cron entry.
 
 Setup
