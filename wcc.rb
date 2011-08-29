@@ -359,26 +359,26 @@ def checkForUpdate(site)
 		return false
 	end
 	
-	new_site = res.body
+	new_content = res.body
 	
 	# detect encoding from http header, meta element, default utf-8
 	# do not use utf-8 regex because it will fail on non utf-8 pages
 	encoding = (res['content-type'].to_s.match(/;\s*charset=([A-Za-z0-9-]*)/i).to_a[1] || 
-				new_site.match(/<meta.*charset=([a-zA-Z0-9-]*).*/i).to_a[1]).to_s.downcase || 'utf-8'
+				new_content.match(/<meta.*charset=([a-zA-Z0-9-]*).*/i).to_a[1]).to_s.downcase || 'utf-8'
 	
 	$logger.info "Encoding is '#{encoding}'"
 	
 	# convert to utf-8
 	begin
-		new_site = Iconv.conv('utf-8', encoding, new_site)
+		new_content = Iconv.conv('utf-8', encoding, new_content)
 	rescue
 		$logger.error "Cannot convert site from '#{encoding}': #{$!.to_s}"
 		return false
 	end
 	
 	# strip html _before_ diffing
-	new_site = new_site.strip_html if site.striphtml?
-	new_hash = Digest::MD5.hexdigest(new_site)
+	new_content = new_content.strip_html if site.striphtml?
+	new_hash = Digest::MD5.hexdigest(new_content)
 	
 	$logger.debug "Compare hashes\n  old: #{site.hash.to_s}\n  new: #{new_hash.to_s}"
 	return false if new_hash == site.hash
@@ -386,7 +386,7 @@ def checkForUpdate(site)
 	# do not try diff or anything if site was never checked before
 	if site.new?
 		# update content
-		site.hash, site.content = new_hash, new_site
+		site.hash, site.content = new_hash, new_content
 		
 		# set custom diff message
 		diff = "Site was first checked so no diff was possible."
@@ -401,7 +401,7 @@ def checkForUpdate(site)
 		new_label = "NEW (%s)" % Time.now.strftime(DIFF_TIME_FMT)
 	
 		# do update
-		site.hash, site.content = new_hash, new_site
+		site.hash, site.content = new_hash, new_content
 		
 		# diff between OLD and NEW
 		diff = %x[diff -U 1 --label "#{old_label}" --label "#{new_label}" #{old_site_file.path} #{Conf.file(site.id + '.site')}]
