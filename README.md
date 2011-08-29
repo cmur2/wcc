@@ -1,14 +1,14 @@
 web change checker
 ==================
 
-Implemented in Ruby, tested with Ruby 1.8.7. The main file is 'wcc.rb'.
-
 This is a simple script to track changes of websites and get notified via mail on
 change with configurable scope of adresses per website. All mails contain a unified diff
 from old content to new content so minor changes produce only few lines of text even on large sites.
 
 Note: wcc relies on native `diff` command to produce the unified diff shown in mails -
 plans are to remove this dependency by using [something like this](https://github.com/samg/diffy) later...
+
+Implemented in Ruby, tested with Ruby 1.8.7. The main file is 'wcc.rb'.
 
 Usage
 -----
@@ -42,7 +42,7 @@ use `cd` in cron entry.
 Setup
 -----
 
-First you need to install ruby (preferably version 1.8.x) and rubygems since wcc depends
+First you need to install ruby (preferably version 1.8.7) and rubygems since wcc depends
 on some gems (currently one but number will grow):
 
 * [htmlentities](http://htmlentities.rubyforge.org/) (preferably 4.3.0)
