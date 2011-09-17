@@ -47,8 +47,11 @@ on some gems (currently one but number will grow):
 
 * [htmlentities](http://htmlentities.rubyforge.org/) (preferably 4.3.0)
 
-Install the listed gems via 'sudo gem install *name*' (or if you are using
-[rvm](http://beginrescueend.com/) only 'gem install *name*').
+Install the listed gems via:
+
+	sudo gem install *name*
+
+(If you use [rvm](http://beginrescueend.com/) you should omit the 'sudo'.)
 
 Old Implementations
 -------------------
