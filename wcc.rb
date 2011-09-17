@@ -5,6 +5,7 @@ require 'uri'
 require 'optparse'
 require 'singleton'
 require 'net/http'
+require 'net/https'
 require 'net/smtp'
 require 'pathname'
 require 'logger'
@@ -346,12 +347,25 @@ class String
 	end
 end
 
+def fetch(site)
+	http = Net::HTTP.new(site.uri.host, site.uri.port)
+	if site.uri.is_a?(URI::HTTPS)
+		http.use_ssl = true
+		http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+	end
+	http.start do |http|
+		req = Net::HTTP::Get.new(site.uri.request_uri)
+		http.request(req)
+	end
+	#return Net::HTTP.get_response(site.uri)
+end
+
 def checkForUpdate(site)
 	logger.info "Requesting '#{site.uri.to_s}'"
 	begin
-		res = Net::HTTP.get_response(site.uri)
-	rescue
-		logger.error "Cannot connect to #{site.uri.to_s} : #{$!.to_s}"
+		res = fetch(site)
+	rescue => ex
+		logger.error "Cannot connect to #{site.uri.to_s} : #{ex.to_s}"
 		return false
 	end
 	if not res.kind_of?(Net::HTTPOK)
