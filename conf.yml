@@ -24,3 +24,6 @@ sites:
     emails:
       - me@secret.place
     auth: {type: basic, username: me, password: secret}
+  - url: http://your.cms.com/
+    #emails: ...
+    cookie: file.cookie

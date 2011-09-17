@@ -156,12 +156,17 @@ class Conf
 				end
 			end
 			
+			if not yaml_site['cookie'].nil?
+				cookie = File.open(yaml_site['cookie'], 'r') { |f| f.read }
+			end
+			
 			@sites << Site.new(
 				yaml_site['url'], 
 				yaml_site['strip_html'] || false, 
 				yaml_site['emails'].map { |m| MailAddress.new(m) } || [],
 				filterrefs,
-				yaml_site['auth'] || {})
+				yaml_site['auth'] || {},
+				cookie)
 		end if yaml
 		
 		logger.debug @sites.length.to_s + (@sites.length == 1 ? ' site' : ' sites') + " loaded\n" +
@@ -199,12 +204,13 @@ class FilterRef
 end
 
 class Site
-	def initialize(url, strip_html, emails, filters, auth)
+	def initialize(url, strip_html, emails, filters, auth, cookie)
 		@uri = URI.parse(url)
 		@striphtml = strip_html
 		@emails = emails.is_a?(Array) ? emails : [emails]
 		@filters = filters.is_a?(Array) ? filters : [filters]
 		@auth = auth
+		@cookie = cookie
 		@id = Digest::MD5.hexdigest(url.to_s)[0...8]
 		load_hash
 	end
@@ -215,6 +221,7 @@ class Site
 	def emails; @emails end
 	def filters; @filters end
 	def auth; @auth end
+	def cookie; @cookie end
 	def id; @id end
 	
 	def to_s; "%s;%s;%s" % [@uri.to_s, (@striphtml ? 'yes' : 'no'), @emails.join(';')] end
@@ -362,6 +369,9 @@ def fetch(site)
 		if site.auth['type'] == 'basic'
 			logger.debug "Doing basic auth"
 			req.basic_auth(site.auth['username'], site.auth['password'])
+		end
+		if not site.cookie.nil?
+			req.add_field("Cookie", site.cookie)
 		end
 		http.request(req)
 	end
