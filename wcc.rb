@@ -155,12 +155,13 @@ class Conf
 					filterrefs << FilterRef.new(entry, {})
 				end
 			end
-
+			
 			@sites << Site.new(
 				yaml_site['url'], 
 				yaml_site['strip_html'] || false, 
 				yaml_site['emails'].map { |m| MailAddress.new(m) } || [],
-				filterrefs)
+				filterrefs,
+				yaml_site['auth'] || {})
 		end if yaml
 		
 		logger.debug @sites.length.to_s + (@sites.length == 1 ? ' site' : ' sites') + " loaded\n" +
@@ -198,19 +199,22 @@ class FilterRef
 end
 
 class Site
-	def initialize(url, strip_html, emails, filters)
+	def initialize(url, strip_html, emails, filters, auth)
 		@uri = URI.parse(url)
 		@striphtml = strip_html
 		@emails = emails.is_a?(Array) ? emails : [emails]
 		@filters = filters.is_a?(Array) ? filters : [filters]
+		@auth = auth
 		@id = Digest::MD5.hexdigest(url.to_s)[0...8]
 		load_hash
 	end
 	
+	# TODO: attr_reader
 	def uri; @uri end
 	def striphtml?; @striphtml end
 	def emails; @emails end
 	def filters; @filters end
+	def auth; @auth end
 	def id; @id end
 	
 	def to_s; "%s;%s;%s" % [@uri.to_s, (@striphtml ? 'yes' : 'no'), @emails.join(';')] end
@@ -355,9 +359,12 @@ def fetch(site)
 	end
 	http.start do |http|
 		req = Net::HTTP::Get.new(site.uri.request_uri)
+		if site.auth['type'] == 'basic'
+			logger.debug "Doing basic auth"
+			req.basic_auth(site.auth['username'], site.auth['password'])
+		end
 		http.request(req)
 	end
-	#return Net::HTTP.get_response(site.uri)
 end
 
 def checkForUpdate(site)

@@ -20,3 +20,7 @@ sites:
     filters:
       - test
       - paramtest: {number: 5}
+  - url: https://my.secret.place/
+    emails:
+      - me@secret.place
+    auth: {type: basic, username: me, password: secret}
