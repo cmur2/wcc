@@ -372,7 +372,6 @@ def fetch(site)
 		if not site.cookie.nil?
 			req.add_field("Cookie", site.cookie)
 		end
-		# TODO: rescue rare Timeout::Error's
 		http.request(req)
 	end
 end
@@ -381,7 +380,7 @@ def checkForUpdate(site)
 	logger.info "Requesting '#{site.uri.to_s}'"
 	begin
 		res = fetch(site)
-	rescue => ex
+	rescue StandardError, Timeout::Error => ex
 		logger.error "Cannot connect to #{site.uri.to_s} : #{ex.to_s}"
 		return false
 	end
