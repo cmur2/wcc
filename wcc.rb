@@ -192,13 +192,12 @@ class Conf
 end
 
 class FilterRef
+	attr_reader :id, :arguments
+
 	def initialize(id, arguments)
 		@id = id
 		@arguments = arguments
 	end
-	
-	def id; @id end
-	def arguments; @arguments end
 	
 	def to_s; @id end
 end
@@ -452,8 +451,23 @@ def checkForUpdate(site)
 end
 
 class MyFormatter
-	def call(severity, time, progname, msg)
-		"%s: %s\n" % [severity, msg.to_s]
+	def white;  "\e[1;37m" end
+	def cyan;   "\e[1;36m" end
+	def magenta;"\e[1;35m" end
+	def blue;   "\e[1;34m" end
+	def yellow; "\e[1;33m" end
+	def green;  "\e[1;32m" end
+	def red;    "\e[1;31m" end
+	def black;  "\e[1;30m" end
+	def rst;    "\e[0m" end
+
+	def call(lvl, time, progname, msg)
+		text = "%s: %s" % [lvl, msg.to_s]
+		# coloring
+		return [magenta, text, rst, "\n"].join if lvl == "UNKNOWN"
+		return [red, text, rst, "\n"].join if lvl == "ERROR" or lvl == "FATAL"
+		return [yellow, text, rst, "\n"].join if lvl == "WARN"
+		[text, "\n"].join
 	end
 end
 
@@ -473,3 +487,5 @@ Conf.sites.each do |site|
 		logger.info "#{site.uri.host.to_s} is unchanged"
 	end
 end
+
+$logger.close
