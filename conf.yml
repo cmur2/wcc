@@ -13,7 +13,6 @@ conf:
 
 sites:
   - url: http://google.com/
-    strip_html: yes
     emails:
       - mail@example.com
       - mail2@example.com

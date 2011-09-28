@@ -162,7 +162,7 @@ class Conf
 			
 			@sites << Site.new(
 				yaml_site['url'], 
-				yaml_site['strip_html'] || false, 
+				yaml_site['strip_html'] || true,
 				yaml_site['emails'].map { |m| MailAddress.new(m) } || [],
 				filterrefs,
 				yaml_site['auth'] || {},
@@ -373,6 +373,7 @@ def fetch(site)
 		if not site.cookie.nil?
 			req.add_field("Cookie", site.cookie)
 		end
+		# TODO: rescue rare Timeout::Error's
 		http.request(req)
 	end
 end
