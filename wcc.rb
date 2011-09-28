@@ -204,56 +204,56 @@ class FilterRef
 end
 
 class Site
+	attr_reader :uri, :emails, :filters, :auth, :cookie, :id
+
 	def initialize(url, strip_html, emails, filters, auth, cookie)
 		@uri = URI.parse(url)
-		@striphtml = strip_html
+		@strip_html = strip_html
 		@emails = emails.is_a?(Array) ? emails : [emails]
 		@filters = filters.is_a?(Array) ? filters : [filters]
 		@auth = auth
 		@cookie = cookie
 		@id = Digest::MD5.hexdigest(url.to_s)[0...8]
+		# invalid hashes are ""
 		load_hash
 	end
-	
-	# TODO: attr_reader
-	def uri; @uri end
-	def striphtml?; @striphtml end
-	def emails; @emails end
-	def filters; @filters end
-	def auth; @auth end
-	def cookie; @cookie end
-	def id; @id end
-	
-	def to_s; "%s;%s;%s" % [@uri.to_s, (@striphtml ? 'yes' : 'no'), @emails.join(';')] end
-	
-	# invalid hashes are nil and "" - nil.to_s is ""
-	def new?; self.hash.to_s.empty? end
-	def hash; @hash.to_s end
-	def content; load_content if @content.nil?; @content end
+
+	def strip_html?; @strip_html end
+
+	def new?
+		hash.empty?
+	end
 	
 	def load_hash
-		file = Conf.file(self.id + '.md5')
+		file = Conf.file(@id + '.md5')
 		if File.exists?(file)
 			logger.debug "Load hash from file '#{file}'"
 			File.open(file, 'r') { |f| @hash = f.gets; break }
 		else
 			logger.info "Site #{uri.host} was never checked before."
+			@hash = ""
 		end
 	end
 	
 	def load_content
-		file = Conf.file(self.id + '.site')
-		File.open(file, 'r') { |f| @content = f.read } if File.exists?(file)
+		file = Conf.file(@id + '.site')
+		if File.exists?(file)
+			File.open(file, 'r') { |f| @content = f.read }
+		end
 	end
+	
+	def hash; @hash end
 	
 	def hash=(hash)
 		@hash = hash
-		File.open(Conf.file(self.id + '.md5'), 'w') { |f| f.write(@hash) } unless Conf.simulate?
+		File.open(Conf.file(@id + '.md5'), 'w') { |f| f.write(@hash) } unless Conf.simulate?
 	end
+	
+	def content; load_content if @content.nil?; @content end
 	
 	def content=(content)
 		@content = content
-		File.open(Conf.file(self.id + '.site'), 'w') { |f| f.write(@content) } unless Conf.simulate?
+		File.open(Conf.file(@id + '.site'), 'w') { |f| f.write(@content) } unless Conf.simulate?
 	end
 end
 
@@ -409,7 +409,7 @@ def checkForUpdate(site)
 	end
 	
 	# strip html _before_ diffing
-	new_content = new_content.strip_html if site.striphtml?
+	new_content = new_content.strip_html if site.strip_html?
 	new_hash = Digest::MD5.hexdigest(new_content)
 	
 	logger.debug "Compare hashes\n  old: #{site.hash.to_s}\n  new: #{new_hash.to_s}"
