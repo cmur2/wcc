@@ -70,13 +70,16 @@ class Conf
 			end
 		end.parse!
 		
-		logger.progname = 'wcc'
+		$logger.progname = 'wcc'
 
 		# latest flag overrides everything
-		logger.level = Logger::ERROR
-		logger.level = Logger::INFO if self[:verbose]
-		logger.level = Logger::DEBUG if self[:debug]
+		$logger.level = Logger::ERROR
+		$logger.level = Logger::INFO if self[:verbose]
+		$logger.level = Logger::DEBUG if self[:debug]
+		
+		$logger.formatter = MyFormatter.new((self[:verbose] or self[:debug]))
 
+		# main
 		logger.info "No config file given, using default 'conf.yml' file" if ARGV.length == 0
 
 		self[:conf] = ARGV[0] || 'conf.yml'
@@ -450,6 +453,10 @@ def checkForUpdate(site)
 end
 
 class MyFormatter
+	def initialize(use_color = true)
+		@color = use_color
+	end
+
 	def white;  "\e[1;37m" end
 	def cyan;   "\e[1;36m" end
 	def magenta;"\e[1;35m" end
@@ -462,10 +469,11 @@ class MyFormatter
 
 	def call(lvl, time, progname, msg)
 		text = "%s: %s" % [lvl, msg.to_s]
-		# coloring
-		return [magenta, text, rst, "\n"].join if lvl == "UNKNOWN"
-		return [red, text, rst, "\n"].join if lvl == "ERROR" or lvl == "FATAL"
-		return [yellow, text, rst, "\n"].join if lvl == "WARN"
+		if @color
+			return [magenta, text, rst, "\n"].join if lvl == "UNKNOWN"
+			return [red, text, rst, "\n"].join if lvl == "ERROR" or lvl == "FATAL"
+			return [yellow, text, rst, "\n"].join if lvl == "WARN"
+		end
 		[text, "\n"].join
 	end
 end
@@ -475,7 +483,6 @@ def logger; $logger end
 
 # create global logger
 $logger = Logger.new(STDOUT)
-$logger.formatter = MyFormatter.new
 
 # main
 
