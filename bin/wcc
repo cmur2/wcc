@@ -1,0 +1,6 @@
+#!/usr/bin/ruby -KuW0
+# encoding: UTF-8
+
+require 'wcc'
+
+WCC::Prog.run!
