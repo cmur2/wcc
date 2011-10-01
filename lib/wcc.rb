@@ -277,6 +277,25 @@ module WCC
 			@content = content
 			File.open(Conf.file(@id + '.site'), 'w') { |f| f.write(@content) } unless Conf.simulate?
 		end
+
+		def fetch
+			http = Net::HTTP.new(@uri.host, @uri.port)
+			if @uri.is_a?(URI::HTTPS)
+				http.use_ssl = true
+				http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+			end
+			http.start do |http|
+				req = Net::HTTP::Get.new(@uri.request_uri)
+				if @auth['type'] == 'basic'
+					WCC.logger.debug "Doing basic auth"
+					req.basic_auth(@auth['username'], @auth['password'])
+				end
+				if not @cookie.nil?
+					req.add_field("Cookie", @cookie)
+				end
+				http.request(req)
+			end
+		end
 	end
 
 	class MailAddress
@@ -398,31 +417,10 @@ module WCC
 	end
 
 	class Prog
-
-		# TODO: move to Site
-		def self.fetch(site)
-			http = Net::HTTP.new(site.uri.host, site.uri.port)
-			if site.uri.is_a?(URI::HTTPS)
-				http.use_ssl = true
-				http.verify_mode = OpenSSL::SSL::VERIFY_NONE
-			end
-			http.start do |http|
-				req = Net::HTTP::Get.new(site.uri.request_uri)
-				if site.auth['type'] == 'basic'
-					WCC.logger.debug "Doing basic auth"
-					req.basic_auth(site.auth['username'], site.auth['password'])
-				end
-				if not site.cookie.nil?
-					req.add_field("Cookie", site.cookie)
-				end
-				http.request(req)
-			end
-		end
-
 		def self.checkForUpdate(site)
 			WCC.logger.info "Requesting '#{site.uri.to_s}'"
 			begin
-				res = fetch(site)
+				res = site.fetch
 			rescue StandardError, Timeout::Error => ex
 				WCC.logger.error "Cannot connect to #{site.uri.to_s} : #{ex.to_s}"
 				return false
