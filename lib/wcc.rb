@@ -64,10 +64,10 @@ module WCC
 				:clean => false,
 				:nomails => false,
 				# when you want to use ./tmp it must be writeable
-				:dir => '/var/tmp/wcc',
+				:cache_dir => '/var/tmp/wcc',
 				:tag => 'wcc',
 				:syslog => false,
-				:filterd => './filter.d',
+				:filter_dir => './filter.d',
 				:mailer => 'smtp',
 				:smtp_host => 'localhost',
 				:smtp_port => 25
@@ -82,7 +82,7 @@ module WCC
 				opts.banner += "\nOptions:\n"
 				opts.on('-v', '--verbose', 'Output more information') do self[:verbose] = true end
 				opts.on('-d', '--debug', 'Enable debug mode') do self[:debug] = true end
-				opts.on('-o', '--dir DIR', 'Save hash and diff files to DIR') do |dir| self[:dir] = dir end
+				opts.on('-o', '--cache-dir DIR', 'Save hash and diff files to DIR') do |dir| self[:cache_dir] = dir end
 				opts.on('-s', '--simulate', 'Check for update but do not save hash or diff files') do self[:simulate] = true end
 				opts.on('-c', '--clean', 'Remove all saved hash and diff files') do self[:clean] = true end
 				opts.on('-t', '--tag TAG', 'Set TAG used in output') do |t| self[:tag] = t end
@@ -122,10 +122,10 @@ module WCC
 			yaml = YAML.load_file(self[:conf])
 			if yaml.is_a?(Hash) and (yaml = yaml['conf']).is_a?(Hash)
 				@options[:from_mail] ||= yaml['from_addr']
-				@options[:dir] ||= yaml['cache_dir']
+				@options[:cache_dir] ||= yaml['cache_dir']
 				@options[:tag] ||= yaml['tag']
 				@options[:syslog] ||= yaml['use_syslog']
-				@options[:filterd] ||= yaml['filterd']
+				@options[:filter_dir] ||= yaml['filterd']
 				
 				if yaml['email'].is_a?(Hash)
 					if yaml['email']['smtp'].is_a?(Hash)
@@ -149,18 +149,18 @@ module WCC
 				exit 0
 			end
 			
-			# create dir for hash files
-			Dir.mkdir(self[:dir]) unless File.directory?(self[:dir])
+			# create cache dir for hash and diff files
+			Dir.mkdir(self[:cache_dir]) unless File.directory?(self[:cache_dir])
 			
 			if(self[:clean])
 				WCC.logger.warn "Cleanup hash and diff files"
-				Dir.foreach(self[:dir]) do |f|
+				Dir.foreach(self[:cache_dir]) do |f|
 					File.delete(self.file(f)) if f =~ /^.*\.(md5|site)$/
 				end
 			end
 			
 			# read filter.d
-			Dir[File.join(self[:filterd], '*.rb')].each { |file| require file }
+			Dir[File.join(self[:filter_dir], '*.rb')].each { |file| require file }
 		end
 		
 		def self.sites
@@ -170,19 +170,19 @@ module WCC
 			
 			WCC.logger.debug "Load sites from '#{Conf[:conf]}'"
 			
-			# may be false if file is empty
+			# may be *false* if file is empty
 			yaml = YAML.load_file(Conf[:conf])
 			
 			yaml['sites'].to_a.each do |yaml_site|
-				filterrefs = []
+				frefs = []
 				(yaml_site['filters'] || []).each do |entry|
 					if entry.is_a?(Hash)
 						# hash containing only one key (filter id),
 						# the value is the argument hash
 						id = entry.keys[0]
-						filterrefs << FilterRef.new(id, entry[id])
+						frefs << FilterRef.new(id, entry[id])
 					else entry.is_a?(String)
-						filterrefs << FilterRef.new(entry, {})
+						frefs << FilterRef.new(entry, {})
 					end
 				end
 				
@@ -194,10 +194,10 @@ module WCC
 					yaml_site['url'], 
 					yaml_site['strip_html'] || true,
 					yaml_site['emails'].map { |m| MailAddress.new(m) } || [],
-					filterrefs,
+					frefs,
 					yaml_site['auth'] || {},
 					cookie)
-			end if not yaml.nil?
+			end if not yaml
 			
 			WCC.logger.debug @sites.length.to_s + (@sites.length == 1 ? ' site' : ' sites') + " loaded\n" +
 				@sites.map { |s| "  #{s.uri.host.to_s}\n    url: #{s.uri.to_s}\n    id: #{s.id}" }.join("\n")
@@ -206,16 +206,17 @@ module WCC
 		end
 		
 		def self.mailer
-			if @mailer.nil?
-				# smtp mailer
-				if Conf[:mailer] == 'smtp'
-					@mailer = SmtpMailer.new(Conf[:smtp_host], Conf[:smtp_port])
-				end
+			return @mailer unless @mailer.nil?
+
+			# smtp mailer
+			if Conf[:mailer] == 'smtp'
+				@mailer = SmtpMailer.new(Conf[:smtp_host], Conf[:smtp_port])
 			end
+
 			@mailer
 		end
 		
-		def self.file(path = nil) File.join(self[:dir], path) end
+		def self.file(path = nil) File.join(self[:cache_dir], path) end
 		def self.simulate?; self[:simulate] end
 		def self.send_mails?; !self[:nomails] end
 		def self.[](key); Conf.instance[key] end
@@ -281,7 +282,7 @@ module WCC
 				return false
 			end
 			
-			# strip html _before_ diffing
+			# strip html
 			new_content = new_content.strip_html if site.strip_html?
 			new_hash = Digest::MD5.hexdigest(new_content)
 			
@@ -290,7 +291,6 @@ module WCC
 			
 			# do not try diff or anything if site was never checked before
 			if site.new?
-				# update content
 				site.hash, site.content = new_hash, new_content
 				
 				# set custom diff message
@@ -305,13 +305,13 @@ module WCC
 				old_label = "OLD (%s)" % File.mtime(Conf.file(site.id + ".md5")).strftime(DIFF_TIME_FMT)
 				new_label = "NEW (%s)" % Time.now.strftime(DIFF_TIME_FMT)
 			
-				# do update
 				site.hash, site.content = new_hash, new_content
 				
 				# diff between OLD and NEW
 				diff = %x[diff -U 1 --label "#{old_label}" --label "#{new_label}" #{old_site_file.path} #{Conf.file(site.id + '.site')}]
 			end
 			
+			# HACK: there *was* an update but no notification is required
 			return false if not Filter.accept(diff, site.filters)
 			
 			Mail.new(
