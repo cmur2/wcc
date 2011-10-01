@@ -10,7 +10,14 @@ Gem::Specification.new do |s|
 	s.homepage	= "https://github.com/cmur2/wcc"
 	s.rubyforge_project = "wcc"
 	
-	s.files = ["bin/wcc", "lib/wcc.rb", "README.md"]
+	s.files = [
+		"bin/wcc",
+		"lib/wcc/filter.rb",
+		"lib/wcc/mail.rb",
+		"lib/wcc/site.rb",
+		"lib/wcc.rb",
+		"README.md"
+	]
 	
 	s.require_paths = ["lib"]
 	

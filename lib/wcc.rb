@@ -16,8 +16,13 @@ require 'yaml'
 # ruby gem dependencies
 require 'htmlentities'
 
+# wcc
+require 'wcc/filter'
+require 'wcc/mail'
+require 'wcc/site'
+
 class String
-	# Remove all HTML <tags> with at least one character name and
+	# Remove all HTML tags with at least one character name and
 	# decode all HTML entities into utf-8 characters.
 	#
 	# @return [String] stripped string
@@ -31,6 +36,7 @@ module WCC
 	DIFF_TIME_FMT = '%Y-%m-%d %H:%M:%S %Z'
 	
 	# logging via WCC.logger.blub
+	
 	def self.logger
 		@logger
 	end
@@ -57,6 +63,7 @@ module WCC
 				:simulate => false,
 				:clean => false,
 				:nomails => false,
+				# when you want to use ./tmp it must be writeable
 				:dir => '/var/tmp/wcc',
 				:tag => 'wcc',
 				:syslog => false,
@@ -212,182 +219,6 @@ module WCC
 		def self.simulate?; self[:simulate] end
 		def self.send_mails?; !self[:nomails] end
 		def self.[](key); Conf.instance[key] end
-	end
-
-	class FilterRef
-		attr_reader :id, :arguments
-
-		def initialize(id, arguments)
-			@id = id
-			@arguments = arguments
-		end
-		
-		def to_s; @id end
-	end
-
-	class Site
-		attr_reader :uri, :emails, :filters, :auth, :cookie, :id
-
-		def initialize(url, strip_html, emails, filters, auth, cookie)
-			@uri = URI.parse(url)
-			@strip_html = strip_html
-			@emails = emails.is_a?(Array) ? emails : [emails]
-			@filters = filters.is_a?(Array) ? filters : [filters]
-			@auth = auth
-			@cookie = cookie
-			@id = Digest::MD5.hexdigest(url.to_s)[0...8]
-			# invalid hashes are ""
-			load_hash
-		end
-
-		def strip_html?; @strip_html end
-
-		def new?
-			hash.empty?
-		end
-		
-		def load_hash
-			file = Conf.file(@id + '.md5')
-			if File.exists?(file)
-				WCC.logger.debug "Load hash from file '#{file}'"
-				File.open(file, 'r') { |f| @hash = f.gets; break }
-			else
-				WCC.logger.info "Site #{uri.host} was never checked before."
-				@hash = ""
-			end
-		end
-		
-		def load_content
-			file = Conf.file(@id + '.site')
-			if File.exists?(file)
-				File.open(file, 'r') { |f| @content = f.read }
-			end
-		end
-		
-		def hash; @hash end
-		
-		def hash=(hash)
-			@hash = hash
-			File.open(Conf.file(@id + '.md5'), 'w') { |f| f.write(@hash) } unless Conf.simulate?
-		end
-		
-		def content; load_content if @content.nil?; @content end
-		
-		def content=(content)
-			@content = content
-			File.open(Conf.file(@id + '.site'), 'w') { |f| f.write(@content) } unless Conf.simulate?
-		end
-
-		def fetch
-			http = Net::HTTP.new(@uri.host, @uri.port)
-			if @uri.is_a?(URI::HTTPS)
-				http.use_ssl = true
-				http.verify_mode = OpenSSL::SSL::VERIFY_NONE
-			end
-			http.start do |http|
-				req = Net::HTTP::Get.new(@uri.request_uri)
-				if @auth['type'] == 'basic'
-					WCC.logger.debug "Doing basic auth"
-					req.basic_auth(@auth['username'], @auth['password'])
-				end
-				if not @cookie.nil?
-					req.add_field("Cookie", @cookie)
-				end
-				http.request(req)
-			end
-		end
-	end
-
-	class MailAddress
-		def initialize(email)
-			email = email.to_s if email.is_a?(MailAddress)
-			@email = email.strip
-		end
-		
-		def name
-			if @email =~ /^[\w\s]+<.+@[^@]+>$/
-				@email.gsub(/<.+?>/, '').strip
-			else
-				@email.split("@")[0...-1].join("@")
-			end
-		end
-
-		def address
-			if @email =~ /^[\w\s]+<.+@[^@]+>$/
-				@email.match(/<([^>]+@[^@>]+)>/)[1]
-			else
-				@email
-			end
-		end
-		
-		def to_s; @email end
-	end
-
-	class Mail
-		attr_reader :title, :message
-		
-		def initialize(title, message, options = {})
-			@title = title
-			@message = message
-			@options = {:from => MailAddress.new(Conf[:from_mail])}
-			@options[:from] = MailAddress.new(options[:from]) unless options[:from].nil?
-		end
-		
-		def send(tos = [])
-			Conf.mailer.send(self, @options[:from], tos)
-		end
-	end
-
-	class SmtpMailer
-		def initialize(host, port)
-			@host = host
-			@port = port
-		end
-		
-		def send(mail, from, to = [])
-			Net::SMTP.start(@host, @port) do |smtp|
-				to.each do |toaddr|
-					msg  = "From: #{from.name} <#{from.address}>\n"
-					msg += "To: #{toaddr}\n"
-					msg += "Subject: #{mail.title.gsub(/\s+/, ' ')}\n"
-					msg += "Content-Type: text/plain; charset=\"utf-8\"\n"
-					msg += "Content-Transfer-Encoding: base64\n"
-					msg += "\n"
-					msg += Base64.encode64(mail.message)
-					
-					smtp.send_message(msg, from.address, toaddr.address)
-				end
-			end
-		rescue
-			WCC.logger.fatal "Cannot send mails at #{@host}:#{@port} : #{$!.to_s}"
-		end
-	end
-
-	class Filter
-		@@filters = {}
-		
-		def self.add(id, &block)
-			WCC.logger.info "Adding filter '#{id}'"
-			@@filters[id] = block
-		end
-		
-		def self.accept(data, filters)
-			return true if filters.nil?
-			
-			WCC.logger.info "Testing with filters: #{filters.join(', ')}"
-			filters.each do |fref|
-				block = @@filters[fref.id]
-				if block.nil?
-					WCC.logger.error "Requested filter '#{fref.id}' not found, skipping it."
-					next
-				end
-				if not block.call(data, fref.arguments)
-					WCC.logger.info "Filter #{fref.id} failed!"
-					return false
-				end
-			end
-			true
-		end
 	end
 
 	class LogFormatter
