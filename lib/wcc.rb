@@ -173,6 +173,11 @@ module WCC
 			# may be *false* if file is empty
 			yaml = YAML.load_file(Conf[:conf])
 			
+			if not yaml
+				WCC.logger.info "No sites loaded"
+				return @sites
+			end
+			
 			yaml['sites'].to_a.each do |yaml_site|
 				frefs = []
 				(yaml_site['filters'] || []).each do |entry|
@@ -197,7 +202,7 @@ module WCC
 					frefs,
 					yaml_site['auth'] || {},
 					cookie)
-			end if not yaml
+			end
 			
 			WCC.logger.debug @sites.length.to_s + (@sites.length == 1 ? ' site' : ' sites') + " loaded\n" +
 				@sites.map { |s| "  #{s.uri.host.to_s}\n    url: #{s.uri.to_s}\n    id: #{s.id}" }.join("\n")
