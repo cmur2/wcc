@@ -421,7 +421,10 @@ module WCC
 			WCC.logger.info "Requesting '#{site.uri.to_s}'"
 			begin
 				res = site.fetch
-			rescue StandardError, Timeout::Error => ex
+			rescue Timeout::Error => ex
+				# don't claim on this
+				return false
+			rescue => ex
 				WCC.logger.error "Cannot connect to #{site.uri.to_s} : #{ex.to_s}"
 				return false
 			end
