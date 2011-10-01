@@ -1,25 +1,22 @@
 web change checker
 ==================
 
-This is a simple script to track changes of websites and get notified via mail on
+This is a simple ruby script to track changes of websites and get notified via mail on
 change with configurable scope of adresses per website. All mails contain a unified diff
 from old content to new content so minor changes produce only few lines of text even on large sites.
 
 Note: wcc relies on native `diff` command to produce the unified diff shown in mails -
 plans are to remove this dependency by using [something like this](https://github.com/samg/diffy) later...
 
-Implemented in Ruby, tested with Ruby 1.8.7. The main file is 'wcc.rb'.
-
 Usage
 -----
 
-The web-change-checker ruby script can be either invoked by hand or
-automatically via *cron* on a server environment since it contains a shebang
-line for '/usr/bin/ruby'.
+wcc is packaged as a gem named 'wcc' and provides it's main script as ´wcc´ via the
+command line. It can invoked by hand or automatically via *cron* on a server environment.
 
 For using wcc you need to specify some options:
 
-* either via the command line (see `wcc.rb -h`)
+* either via the command line (see `wcc -h`)
 * or in a configuration file in [YAML](https://secure.wikimedia.org/wikipedia/en/wiki/YAML) format
 
 The location of the configuration file (usually called 'conf.yml' or something like this)
@@ -33,24 +30,18 @@ It is highly encouraged to use the configuration file for all rare changing thin
 
 An example crontab entry that runs wcc every 10 minutes might look like this:
 
-	*/10 *  * * *   root    cd /path/to/wcc;./wcc.rb
+	*/10 *  * * *   root    cd /path/to/dir/with/conf;./wcc
 
 By default wcc only outputs ERROR messages to avoid your cron daemon spammin' around.
-It is recommended to place 'wcc.rb' and 'conf.yml' within an separate directory and
-use `cd` in cron entry.
+It is recommended to place 'conf.yml' (and optionally the 'filter.d') within an separate 
+directory and use `cd` in cron entry.
 
 Setup
 -----
 
-First you need to install ruby (preferably version 1.8.7) and rubygems since wcc depends
-on some gems. Install the dependencies:
+You need Ruby (preferably version 1.8.7) and Rubygems installed
+(consider using [rvm](http://beginrescueend.com/)). Install wcc:
 
-	sudo gem install htmlentities
+	gem install wcc
 
-(If you use [rvm](http://beginrescueend.com/) you should omit the 'sudo'.)
-
-Old Implementations
--------------------
-
-* Bash - has been abandoned, production usage is discouraged!
-* Python - has been abandoned
+(If you *don't* use [rvm](http://beginrescueend.com/) you should add a 'sudo'.)
