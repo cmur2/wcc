@@ -17,9 +17,11 @@ require 'yaml'
 require 'htmlentities'
 
 class String
+	# Remove all HTML <tags> with at least one character name and
+	# decode all HTML entities into utf-8 characters.
+	#
+	# @return [String] stripped string
 	def strip_html
-		# remove all HTML <tags> with at least 1 character name
-		# and decode all HTML entities into UTF-8 characters
 		HTMLEntities.new.decode(self.gsub(/<[^>]+>/, ' '))
 	end
 end
@@ -69,18 +71,19 @@ module WCC
 			@options = {}
 			
 			OptionParser.new do |opts|
-				opts.banner = "Usage: ruby wcc.rb [options] [config-yaml-file]"
+				opts.banner =  "Usage: ruby wcc.rb [options] [config-yaml-file]"
+				opts.banner += "\nOptions:\n"
 				opts.on('-v', '--verbose', 'Output more information') do self[:verbose] = true end
 				opts.on('-d', '--debug', 'Enable debug mode') do self[:debug] = true end
-				opts.on('-o', '--dir DIR', 'Save required files to DIR') do |dir| self[:dir] = dir end
-				opts.on('-s', '--simulate', 'Check for update but does not save any data') do self[:simulate] = true end
-				opts.on('-c', '--clean', 'Removes all hash and diff files') do self[:clean] = true end
-				opts.on('-t', '--tag TAG', 'Sets TAG used in output') do |t| self[:tag] = t end
-				opts.on('-n', '--no-mails', 'Does not send any emails') do self[:nomails] = true end
-				opts.on('-f', '--from MAIL', 'Set sender mail address') do |m| self[:from_mail] = m end
-				opts.on('--host HOST', 'Sets SMTP host') do |h| self[:host] = h end
-				opts.on('--port PORT', 'Sets SMTP port') do |p| self[:port] = p end
-				opts.on('--show-config', 'Show config after loading config file.') do self[:show_config] = true end
+				opts.on('-o', '--dir DIR', 'Save hash and diff files to DIR') do |dir| self[:dir] = dir end
+				opts.on('-s', '--simulate', 'Check for update but do not save hash or diff files') do self[:simulate] = true end
+				opts.on('-c', '--clean', 'Remove all saved hash and diff files') do self[:clean] = true end
+				opts.on('-t', '--tag TAG', 'Set TAG used in output') do |t| self[:tag] = t end
+				opts.on('-n', '--no-mails', 'Do not send any emails') do self[:nomails] = true end
+				opts.on('-f', '--from MAIL', 'Set From: mail address') do |m| self[:from_mail] = m end
+				opts.on('--host HOST', 'Set SMTP host') do |h| self[:host] = h end
+				opts.on('--port PORT', 'Set SMTP port') do |p| self[:port] = p end
+				opts.on('--show-config', 'Show config after loading config file (debug purposes)') do self[:show_config] = true end
 				opts.on('-h', '-?', '--help', 'Display this screen') do
 					puts opts
 					exit
@@ -94,7 +97,7 @@ module WCC
 			WCC.logger.level = Logger::INFO if self[:verbose]
 			WCC.logger.level = Logger::DEBUG if self[:debug]
 			
-			WCC.logger.formatter = MyFormatter.new((self[:verbose] or self[:debug]))
+			WCC.logger.formatter = LogFormatter.new((self[:verbose] or self[:debug]))
 
 			# main
 			WCC.logger.info "No config file given, using default 'conf.yml' file" if ARGV.length == 0
@@ -187,7 +190,7 @@ module WCC
 					filterrefs,
 					yaml_site['auth'] || {},
 					cookie)
-			end if yaml
+			end if not yaml.nil?
 			
 			WCC.logger.debug @sites.length.to_s + (@sites.length == 1 ? ' site' : ' sites') + " loaded\n" +
 				@sites.map { |s| "  #{s.uri.host.to_s}\n    url: #{s.uri.to_s}\n    id: #{s.id}" }.join("\n")
@@ -353,17 +356,14 @@ module WCC
 			return true if filters.nil?
 			
 			WCC.logger.info "Testing with filters: #{filters.join(', ')}"
-			
-			filters.each do |filterref|
-				block = @@filters[filterref.id]
-				
+			filters.each do |fref|
+				block = @@filters[fref.id]
 				if block.nil?
-					WCC.logger.error "Requested filter '#{filterref.id}' not found, skipping it."
+					WCC.logger.error "Requested filter '#{fref.id}' not found, skipping it."
 					next
 				end
-				
-				if not block.call(data, filterref.arguments)
-					WCC.logger.info "Filter #{filterref.id} failed!"
+				if not block.call(data, fref.arguments)
+					WCC.logger.info "Filter #{fref.id} failed!"
 					return false
 				end
 			end
@@ -371,7 +371,7 @@ module WCC
 		end
 	end
 
-	class MyFormatter
+	class LogFormatter
 		def initialize(use_color = true)
 			@color = use_color
 		end
