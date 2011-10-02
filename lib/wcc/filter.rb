@@ -3,7 +3,7 @@ module WCC
 	class FilterRef
 		attr_reader :id, :arguments
 
-		def initialize(id, arguments)
+		def initialize(id, arguments = {})
 			@id = id
 			@arguments = arguments
 		end
@@ -30,7 +30,7 @@ module WCC
 					next
 				end
 				if not block.call(data, fref.arguments)
-					WCC.logger.info "Filter #{fref.id} failed!"
+					WCC.logger.info "Filter '#{fref.id}' failed!"
 					return false
 				end
 			end

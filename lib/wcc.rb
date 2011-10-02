@@ -162,6 +162,11 @@ module WCC
 			
 			# read filter.d
 			Dir[File.join(self[:filter_dir], '*.rb')].each { |file| require file }
+			
+			# attach --no-mails filter
+			WCC::Filter.add '--no-mails' do |data|
+				!self[:nomails]
+			end
 		end
 		
 		def self.sites
@@ -180,7 +185,8 @@ module WCC
 			end
 			
 			yaml['sites'].to_a.each do |yaml_site|
-				frefs = []
+				# query --no-mails filter for every site
+				frefs = [FilterRef.new('--no-mails')]
 				(yaml_site['filters'] || []).each do |entry|
 					if entry.is_a?(Hash)
 						# hash containing only one key (filter id),
@@ -188,7 +194,7 @@ module WCC
 						id = entry.keys[0]
 						frefs << FilterRef.new(id, entry[id])
 					else entry.is_a?(String)
-						frefs << FilterRef.new(entry, {})
+						frefs << FilterRef.new(entry)
 					end
 				end
 				
@@ -224,7 +230,6 @@ module WCC
 		
 		def self.file(path = nil) File.join(self[:cache_dir], path) end
 		def self.simulate?; self[:simulate] end
-		def self.send_mails?; !self[:nomails] end
 		def self.[](key); Conf.instance[key] end
 	end
 
@@ -320,13 +325,11 @@ module WCC
 			# HACK: there *was* an update but no notification is required
 			return false if not Filter.accept(diff, site.filters)
 			
-			# TODO: combine Conf.send_mail? with Filter.accept
-			
 			data = OpenStruct.new
 			data.title = "[#{Conf[:tag]}] #{site.uri.host} changed"
 			data.message = "Change at #{site.uri.to_s} - diff follows:\n\n#{diff}"
 			
-			Conf.mailer.send(data, MailAddress.new(Conf[:from_mail]), site.emails) if Conf.send_mails?
+			Conf.mailer.send(data, MailAddress.new(Conf[:from_mail]), site.emails)
 			
 			system("logger -t '#{Conf[:tag]}' 'Change at #{site.uri.to_s} (tag #{site.id}) detected'") if Conf[:syslog]
 			

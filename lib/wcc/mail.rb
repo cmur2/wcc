@@ -1,5 +1,7 @@
 
 module WCC
+	# An email address container with internal conversion
+	# routines.
 	class MailAddress
 		def initialize(email)
 			email = email.to_s if email.is_a?(MailAddress)
