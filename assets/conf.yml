@@ -1,0 +1,29 @@
+# web-change-checker
+
+conf:
+  from_addr: root@localhost
+#  cache_dir: /var/tmp/wcc
+#  tag: wcc
+#  use_syslog: yes
+#  filterd: ./filter.d
+#  templated: ./template.d
+#  email:
+#    smtp:
+#      host: localhost
+#      port: 25
+
+sites:
+  - url: http://google.com/
+    emails:
+      - mail@example.com
+      - mail2@example.com
+    filters:
+      - test
+      - arg-test: {number: 5}
+  - url: https://my.secret.place/
+    emails:
+      - me@my.place
+    auth: {type: basic, username: me, password: secret}
+  - url: http://your.cms.com/
+    #emails: ...
+    cookie: file.cookie
