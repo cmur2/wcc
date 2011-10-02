@@ -1,6 +1,7 @@
 
 require 'base64'
 require 'digest/md5'
+require 'erb'
 require 'iconv'
 require 'logger'
 require 'net/http'
@@ -69,6 +70,7 @@ module WCC
 				:tag => 'wcc',
 				:syslog => false,
 				:filter_dir => './filter.d',
+				:template_dir => './template.d',
 				:mailer => 'smtp',
 				:smtp_host => 'localhost',
 				:smtp_port => 25
@@ -83,14 +85,15 @@ module WCC
 				opts.banner += "\nOptions:\n"
 				opts.on('-v', '--verbose', 'Output more information') do self[:verbose] = true end
 				opts.on('-d', '--debug', 'Enable debug mode') do self[:debug] = true end
-				opts.on('-o', '--cache-dir DIR', 'Save hash and diff files to DIR') do |dir| self[:cache_dir] = dir end
+				opts.on('--cache-dir DIR', 'Save hash and diff files to DIR') do |dir| self[:cache_dir] = dir end
 				opts.on('-s', '--simulate', 'Check for update but do not save hash or diff files') do self[:simulate] = true end
-				opts.on('-c', '--clean', 'Remove all saved hash and diff files') do self[:clean] = true end
+				opts.on('--clean', 'Remove all saved hash and diff files') do self[:clean] = true end
 				opts.on('-t', '--tag TAG', 'Set TAG used in output') do |t| self[:tag] = t end
 				opts.on('-n', '--no-mails', 'Do not send any emails') do self[:nomails] = true end
 				opts.on('-f', '--from MAIL', 'Set From: mail address') do |m| self[:from_mail] = m end
 				opts.on('--host HOST', 'Set SMTP host') do |h| self[:host] = h end
 				opts.on('--port PORT', 'Set SMTP port') do |p| self[:port] = p end
+				#opts.on('--init', '--initialize')
 				opts.on('--show-config', 'Show config after loading config file (debug purposes)') do self[:show_config] = true end
 				opts.on('-h', '-?', '--help', 'Display this screen') do
 					puts opts
@@ -127,6 +130,7 @@ module WCC
 				@options[:tag] ||= yaml['tag']
 				@options[:syslog] ||= yaml['use_syslog']
 				@options[:filter_dir] ||= yaml['filterd']
+				@options[:template_dir] ||= yaml['templated']
 				
 				if yaml['email'].is_a?(Hash)
 					if yaml['email']['smtp'].is_a?(Hash)
@@ -329,7 +333,7 @@ module WCC
 			data.title = "[#{Conf[:tag]}] #{site.uri.host} changed"
 			data.message = "Change at #{site.uri.to_s} - diff follows:\n\n#{diff}"
 			
-			Conf.mailer.send(data, MailAddress.new(Conf[:from_mail]), site.emails)
+			Conf.mailer.send(data, @@mail_plain, MailAddress.new(Conf[:from_mail]), site.emails)
 			
 			system("logger -t '#{Conf[:tag]}' 'Change at #{site.uri.to_s} (tag #{site.id}) detected'") if Conf[:syslog]
 			
@@ -338,7 +342,12 @@ module WCC
 
 		# main
 		def self.run!
+			# first use of Conf initializes it
 			WCC.logger = Logger.new(STDOUT)
+			
+			mp_path = File.join(Conf[:template_dir], 'mail-plain.erb')
+			mp = File.open(mp_path, 'r') { |f| f.read }
+			@@mail_plain = ERB.new(mp)
 			
 			Conf.sites.each do |site|
 				if checkForUpdate(site)

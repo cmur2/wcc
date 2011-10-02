@@ -12,6 +12,7 @@ Gem::Specification.new do |s|
 	
 	s.files = [
 		"bin/wcc",
+		"doc/Filters.md",
 		"lib/wcc/filter.rb",
 		"lib/wcc/mail.rb",
 		"lib/wcc/site.rb",

@@ -45,17 +45,11 @@ module WCC
 			@port = port
 		end
 		
-		def send(data, from, tos = [])
+		def send(data, template, from, tos = [])
 			Net::SMTP.start(@host, @port) do |smtp|
 				tos.each do |to|
-					msg  = "From: #{from.name} <#{from.address}>\n"
-					msg += "To: #{to}\n"
-					msg += "Subject: #{data.title.gsub(/\s+/, ' ')}\n"
-					msg += "Content-Type: text/plain; charset=\"utf-8\"\n"
-					msg += "Content-Transfer-Encoding: base64\n"
-					msg += "\n"
-					msg += Base64.encode64(data.message)
-					
+					# eval ERB
+					msg = template.result(binding)
 					smtp.send_message(msg, from.address, to.address)
 				end
 			end
