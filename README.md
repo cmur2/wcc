@@ -8,11 +8,21 @@ from old content to new content so minor changes produce only few lines of text 
 Note: wcc relies on native `diff` command to produce the unified diff shown in mails -
 plans are to remove this dependency by using [something like this](https://github.com/samg/diffy) later...
 
+Setup
+-----
+
+You need Ruby (preferably version 1.8.7) and Rubygems installed
+(consider using [rvm](http://beginrescueend.com/)). Install wcc:
+
+	gem install wcc
+
+(If you *don't* use [rvm](http://beginrescueend.com/) you should add a 'sudo'.)
+
 Usage
 -----
 
-wcc is packaged as a gem named 'wcc' and provides it's main script as ´wcc´ via the
-command line. It can invoked by hand or automatically via *cron* on a server environment.
+The installed 'wcc' gem provides a ´wcc´ binary on the command line.
+It can invoked by hand or automatically via *cron* on a server environment.
 
 For using wcc you need to specify some options:
 
@@ -20,7 +30,7 @@ For using wcc you need to specify some options:
 * or in a configuration file in [YAML](https://secure.wikimedia.org/wikipedia/en/wiki/YAML) format
 
 The location of the configuration file (usually called 'conf.yml' or something like this)
-can itself be given on command line as last argument. Each option has an hard-coded default
+can itself be given on command line as last argument. Each option has a hard-coded default
 (e.g. the configuration file name is assumed to be './conf.yml'). Command line options
 overwrite configuration file entries.
 
@@ -32,16 +42,6 @@ An example crontab entry that runs wcc every 10 minutes might look like this:
 
 	*/10 *  * * *   root    cd /path/to/dir/with/conf;./wcc
 
-By default wcc only outputs ERROR messages to avoid your cron daemon spammin' around.
-It is recommended to place 'conf.yml' (and optionally the 'filter.d') within an separate 
-directory and use `cd` in cron entry.
-
-Setup
------
-
-You need Ruby (preferably version 1.8.7) and Rubygems installed
-(consider using [rvm](http://beginrescueend.com/)). Install wcc:
-
-	gem install wcc
-
-(If you *don't* use [rvm](http://beginrescueend.com/) you should add a 'sudo'.)
+By default wcc only outputs ERROR and FATAL messages to avoid your cron daemon spammin' around.
+It is recommended to place 'conf.yml' (and optionally the 'filter.d' and 'template.d') within
+a separate directory and use `cd` in cron entry.
