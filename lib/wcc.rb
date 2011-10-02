@@ -7,6 +7,7 @@ require 'net/http'
 require 'net/https'
 require 'net/smtp'
 require 'optparse'
+require 'ostruct'
 require 'pathname'
 require 'singleton'
 require 'tempfile'
@@ -319,10 +320,13 @@ module WCC
 			# HACK: there *was* an update but no notification is required
 			return false if not Filter.accept(diff, site.filters)
 			
-			Mail.new(
-				"[#{Conf[:tag]}] #{site.uri.host} changed",
-				"Change at #{site.uri.to_s} - diff follows:\n\n#{diff}"
-				).send(site.emails) if Conf.send_mails?
+			# TODO: combine Conf.send_mail? with Filter.accept
+			
+			data = OpenStruct.new
+			data.title = "[#{Conf[:tag]}] #{site.uri.host} changed"
+			data.message = "Change at #{site.uri.to_s} - diff follows:\n\n#{diff}"
+			
+			Conf.mailer.send(data, MailAddress.new(Conf[:from_mail]), site.emails) if Conf.send_mails?
 			
 			system("logger -t '#{Conf[:tag]}' 'Change at #{site.uri.to_s} (tag #{site.id}) detected'") if Conf[:syslog]
 			
