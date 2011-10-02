@@ -1,1 +1,0 @@
-echo "http://user:pw@ssh.www.example.com:80/my/path" | sed -e "s/[^/]*\/\/\([^@]*@\)\?\([^:/]*\).*/\2/"

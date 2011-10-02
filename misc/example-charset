@@ -1,1 +1,0 @@
-wget -qO - http://sbahn-berlin.de/ | grep -Eo "<meta.*?charset=[^>]*?>" | sed -e "s/<meta.*charset=\([a-zA-Z0-9-]*\).*/\1/g"
