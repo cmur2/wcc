@@ -1,7 +1,7 @@
 
 Gem::Specification.new do |s|
 	s.name		= "wcc"
-	s.version	= "0.0.5"
+	s.version	= "0.0.6"
 	s.summary	= "web change checker"
 	s.description = "wcc tracks changes of websites and notifies you by email."
 	s.author	= "Christian Nicolai"
@@ -14,9 +14,10 @@ Gem::Specification.new do |s|
 		"assets/conf.yml",
 		"assets/filter.d/arg-test.rb",
 		"assets/filter.d/test.rb",
-		"assets/template.d/mail-plain.erb",
+		"assets/template.d/mail.plain.erb",
 		"bin/wcc",
 		"bin/wcc-init",
+		"bin/wcc-upgrade",
 		"doc/Filters.md",
 		"lib/wcc/filter.rb",
 		"lib/wcc/mail.rb",
@@ -32,7 +33,7 @@ Gem::Specification.new do |s|
 	
 	s.require_paths = ["lib"]
 	
-	s.executables = ["wcc", "wcc-init"]
+	s.executables = ["wcc", "wcc-init", "wcc-upgrade"]
 	
 	s.add_runtime_dependency("htmlentities")
 end
