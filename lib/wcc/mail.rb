@@ -8,7 +8,7 @@ module WCC
 			@email = email.strip
 		end
 		
-		# Extract the 'name' out of an mail address:
+		# Extract the 'name' out of an mail address
 		#   "Me <me@example.org>" -> "Me"
 		#   "me2@example.org" -> "me2"
 		#
@@ -21,7 +21,7 @@ module WCC
 			end
 		end
 
-		# Return the real mail address:
+		# Return the real mail address
 		#   "Me <me@example.org>" -> "me@example.org"
 		#   "me2@example.org" -> "me2@example.org"
 		#

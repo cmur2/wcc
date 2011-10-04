@@ -1,0 +1,32 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+
+require 'fileutils'
+require 'pathname'
+
+bin_d = Pathname.new(File.expand_path(File.dirname(__FILE__)))
+cur_d = Pathname.new(Dir.getwd)
+
+src_d = bin_d.parent + "assets"
+
+#def traverse(path)
+#	path.children.each do |p|
+#		if p.directory?
+#			traverse(p)
+#		else
+#			puts p
+#		end
+#	end
+#end
+
+#traverse(src_d)
+
+puts  "Copying all files from '#{src_d}' to '#{cur_d}'..."
+print "This will overwrite all existing files in destination directory if any - Continue? (y/n): "
+answer = $stdin.gets
+case answer
+when "y\n"
+	FileUtils.cp_r src_d.to_s+'/.', cur_d.to_s, :verbose => true
+else
+	puts "You didn't answer with 'y', done nothing."
+end

@@ -18,6 +18,18 @@ You need Ruby (preferably version 1.8.7) and Rubygems installed
 
 (If you *don't* use [rvm](http://beginrescueend.com/) you should add a 'sudo'.)
 
+Then you should pick an (empty!) directory for the configuration files (as 'conf.yml') for wcc
+let's call it '/my/conf' for now. You do a
+
+	cd /my/conf
+
+and then
+
+	wcc-init
+
+At this time you should run the ´wcc´ command only in this directory since wcc reads it's
+configuration by default from './conf.yml'.
+
 Usage
 -----
 
