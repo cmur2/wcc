@@ -345,7 +345,7 @@ module WCC
 			# first use of Conf initializes it
 			WCC.logger = Logger.new(STDOUT)
 			
-			mp_path = File.join(Conf[:template_dir], 'mail-plain.erb')
+			mp_path = File.join(Conf[:template_dir], 'mail.plain.erb')
 			mp = File.open(mp_path, 'r') { |f| f.read }
 			@@mail_plain = ERB.new(mp)
 			
