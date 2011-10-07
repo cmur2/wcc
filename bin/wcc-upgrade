@@ -19,10 +19,15 @@ def traverse(root, dst_root, path)
 			src = root + rel
 			dst = dst_root + rel
 			if dst.exist?
-				print "Do you want to overwrite #{dst}? (y/n): "
-				answer = $stdin.gets
-				if answer == "y\n"
-					FileUtils.cp src, dst, :verbose => true
+				# do compare
+				same = FileUtils.compare_file(src, dst)
+				# do nothing when same
+				if not same
+					print "Do you want to overwrite #{dst}? (y/n): "
+					answer = $stdin.gets
+					if answer == "y\n"
+						FileUtils.cp src, dst, :verbose => true
+					end
 				end
 			else
 				FileUtils.cp src, dst, :verbose => true
