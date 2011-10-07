@@ -330,10 +330,11 @@ module WCC
 			return false if not Filter.accept(diff, site.filters)
 			
 			data = OpenStruct.new
-			data.title = "[#{Conf[:tag]}] #{site.uri.host} changed"
-			data.message = "Change at #{site.uri.to_s} - diff follows:\n\n#{diff}"
+			data.site = site
+			data.diff = diff
+			data.tag = Conf[:tag]
 			
-			Conf.mailer.send(data, @@mail_plain, MailAddress.new(Conf[:from_mail]), site.emails)
+			Conf.mailer.send(data, @@mail_plain, @@mail_body_plain, MailAddress.new(Conf[:from_mail]), site.emails)
 			
 			system("logger -t '#{Conf[:tag]}' 'Change at #{site.uri.to_s} (tag #{site.id}) detected'") if Conf[:syslog]
 			
@@ -345,9 +346,8 @@ module WCC
 			# first use of Conf initializes it
 			WCC.logger = Logger.new(STDOUT)
 			
-			mp_path = File.join(Conf[:template_dir], 'mail.plain.erb')
-			mp = File.open(mp_path, 'r') { |f| f.read }
-			@@mail_plain = ERB.new(mp)
+			@@mail_plain = load_template('mail.plain.erb')
+			@@mail_body_plain = load_template('mail-body.plain.erb')
 			
 			Conf.sites.each do |site|
 				if checkForUpdate(site)
@@ -356,6 +356,14 @@ module WCC
 					WCC.logger.info "#{site.uri.host.to_s} is unchanged"
 				end
 			end
+		end
+		
+		private
+		
+		def self.load_template(name)
+			t_path = File.join(Conf[:template_dir], name)
+			t = File.open(t_path, 'r') { |f| f.read }
+			ERB.new(t)
 		end
 	end
 end

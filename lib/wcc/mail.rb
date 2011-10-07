@@ -45,11 +45,13 @@ module WCC
 			@port = port
 		end
 		
-		def send(data, template, from, tos = [])
+		def send(data, main_t, body_t, from, tos = [])
 			Net::SMTP.start(@host, @port) do |smtp|
 				tos.each do |to|
-					# eval ERB
-					msg = template.result(binding)
+					# eval body_t
+					data.body = body_t.result(binding)
+					# eval main_t
+					msg = main_t.result(binding)
 					smtp.send_message(msg, from.address, to.address)
 				end
 			end

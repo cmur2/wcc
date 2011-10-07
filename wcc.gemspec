@@ -1,7 +1,7 @@
 
 Gem::Specification.new do |s|
 	s.name		= "wcc"
-	s.version	= "0.0.6"
+	s.version	= "0.0.7"
 	s.summary	= "web change checker"
 	s.description = "wcc tracks changes of websites and notifies you by email."
 	s.author	= "Christian Nicolai"
@@ -14,6 +14,7 @@ Gem::Specification.new do |s|
 		"assets/conf.yml",
 		"assets/filter.d/arg-test.rb",
 		"assets/filter.d/test.rb",
+		"assets/template.d/mail-body.plain.erb",
 		"assets/template.d/mail.plain.erb",
 		"bin/wcc",
 		"bin/wcc-init",
