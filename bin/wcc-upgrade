@@ -1,0 +1,34 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+
+require 'fileutils'
+require 'pathname'
+
+bin_d = Pathname.new(File.expand_path(File.dirname(__FILE__)))
+cur_d = Pathname.new(Dir.getwd)
+
+src_d = bin_d.parent + "assets"
+
+# not beautiful but works
+def traverse(root, dst_root, path)
+	path.children.each do |p|
+		if p.directory?
+			traverse(root, dst_root, p)
+		else
+			rel = p.relative_path_from(root)
+			src = root + rel
+			dst = dst_root + rel
+			if dst.exist?
+				print "Do you want to overwrite #{dst}? (y/n): "
+				answer = $stdin.gets
+				if answer == "y\n"
+					FileUtils.cp src, dst, :verbose => true
+				end
+			else
+				FileUtils.cp src, dst, :verbose => true
+			end
+		end
+	end
+end
+
+traverse(src_d, cur_d, src_d)
