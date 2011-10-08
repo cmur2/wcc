@@ -1,10 +1,60 @@
 <html>
 	<head>
 		<title><%= data.site.uri.host %> changed</title>
-	</head>
-	<body><pre>
-Change at <%= data.site.uri.to_s %> - diff follows:
+		<style type="text/css">
+.diff ul {
+	list-style: none;
+	display: table;
+	margin: 0;
+	padding: 0.5em 0 0 0.5em;
+}
 
-<%= data.diff %>
-	</pre></body>
+.diff li {
+	padding: 0;
+	display: table-row;
+	margin: 0;
+}
+
+.diff .ins {
+	background: #dfd;
+	color: #080;
+}
+
+.diff .del {
+	background: #fee;
+	color: #b00;
+}
+
+.diff .range {
+	background: #eef;
+	color: #00b;
+}
+		</style>
+	</head>
+	<body>
+		Change at <a href="<%= data.site.uri.to_s %>"><%= data.site.uri.to_s %></a> - diff follows:
+		<div class="diff">
+<% if data.diff.nil? %>
+			Site was first checked so no diff was possible.
+<% else %>
+			<ul>
+<% for o in data.diff.diff %>
+<% if o.status == :new %>
+				<li class="new">+++<%= o.text %></li>
+<% elsif o.status == :old %>
+				<li class="old">---<%= o.text %></li>
+<% elsif o.status == :range %>
+				<li class="range">@@<%= o.text %></li>
+<% elsif o.status == :ins %>
+				<li class="ins"><%= o.text %></li>
+<% elsif o.status == :del %>
+				<li class="del"><%= o.text %></li>
+<% else %>
+				<li><%= o.text %></li>
+<% end %>
+<% end %>
+			</ul>
+<% end %>
+		</div>
+	</body>
 </html>

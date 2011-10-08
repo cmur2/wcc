@@ -31,6 +31,14 @@ class String
 	def strip_html
 		HTMLEntities.new.decode(self.gsub(/<[^>]+>/, ' '))
 	end
+	
+	# Returns all characters from the i-th to the end.
+	# 
+	# @param [Integer] i offset to start substring
+	# @return [String] slice(i...length)
+	def substring(i)
+		slice(i...length)
+	end
 end
 
 module WCC
@@ -262,6 +270,57 @@ module WCC
 			[text, "\n"].join
 		end
 	end
+	
+	class Diff
+		attr_reader :diff
+		
+		def initialize(dstring)
+			@diff = []
+			dstring.lines.each do |line|
+				o = OpenStruct.new
+				# parse line
+				if line.start_with?('+++')
+					o.status = :new
+					o.text = line.substring(3).rstrip
+				elsif line.start_with?('---')
+					o.status = :old
+					o.text = line.substring(3).rstrip
+				elsif line.start_with?('@@')
+					o.status = :range
+					o.text = line.substring(2).rstrip
+				elsif line.start_with?('+')
+					o.status = :ins
+					o.text = line.substring(1).rstrip
+				elsif line.start_with?('-')
+					o.status = :del
+					o.text = line.substring(1).rstrip
+				else
+					o.status = :other
+					o.text = line.rstrip
+				end
+				@diff << o
+			end
+		end
+		
+		def to_s
+			@diff.map do |o|
+				case o.status
+				when :new
+					'+++'+o.text
+				when :old
+					'---'+o.text
+				when :range
+					'@@'+o.text
+				when :ins
+					'+'+o.text
+				when :del
+					'-'+o.text
+				when :other
+					o.text
+				end
+			end.join("\n")
+		end
+	end
 
 	class Prog
 		def self.checkForUpdate(site)
@@ -308,8 +367,8 @@ module WCC
 			if site.new?
 				site.hash, site.content = new_hash, new_content
 				
-				# set custom diff message
-				diff = "Site was first checked so no diff was possible."
+				# signal that no diff was posible
+				diff = nil
 			else
 				# save old site to tmp file
 				old_site_file = Tempfile.new("wcc-#{site.id}-")
@@ -331,7 +390,7 @@ module WCC
 			
 			data = OpenStruct.new
 			data.site = site
-			data.diff = diff
+			data.diff = Diff.new(diff)
 			data.tag = Conf[:tag]
 			
 			Conf.mailer.send(data, @@mail_plain, @@mail_bodies, MailAddress.new(Conf[:from_mail]), site.emails)

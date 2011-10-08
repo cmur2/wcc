@@ -1,3 +1,7 @@
 Change at <%= data.site.uri.to_s %> - diff follows:
 
+<% if data.diff.nil? %>
+Site was first checked so no diff was possible.
+<% else %>
 <%= data.diff %>
+<% end %>
