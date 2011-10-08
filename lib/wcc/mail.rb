@@ -45,13 +45,31 @@ module WCC
 			@port = port
 		end
 		
-		def send(data, main_t, body_t, from, tos = [])
+		# Sends a mail built up from some [ERB] templates to the
+		# specified adresses.
+		#
+		# @param [OpenStruct] data used to construct ERB binding
+		# @param [ERB] main the main template
+		# @param [Hash] bodies :name, ERB template pairs
+		# @param [String] from the From: address
+		# @param [Array] tos array of To: addresses
+		def send(data, main, bodies, from, tos = [])
+			# generate a boundary that may be used for multipart
+			data.boundary = "frontier-#{data.site.id}"
+			# generate messages
+			msgs = {}
+			tos.each do |to|
+				data.bodies = {}
+				# eval all body templates
+				bodies.each do |name,template|
+					data.bodies[name] = template.result(binding)
+				end
+				# eval main template
+				msgs[to] = main.result(binding)
+			end
+			# send messages
 			Net::SMTP.start(@host, @port) do |smtp|
-				tos.each do |to|
-					# eval body_t
-					data.body = body_t.result(binding)
-					# eval main_t
-					msg = main_t.result(binding)
+				msgs.each do |to,msg|
 					smtp.send_message(msg, from.address, to.address)
 				end
 			end

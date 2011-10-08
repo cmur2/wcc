@@ -14,6 +14,8 @@ Gem::Specification.new do |s|
 		"assets/conf.yml",
 		"assets/filter.d/arg-test.rb",
 		"assets/filter.d/test.rb",
+		"assets/template.d/mail.alt.erb",
+		"assets/template.d/mail-body.html.erb",
 		"assets/template.d/mail-body.plain.erb",
 		"assets/template.d/mail.plain.erb",
 		"bin/wcc",

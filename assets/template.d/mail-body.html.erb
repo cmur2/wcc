@@ -1,0 +1,10 @@
+<html>
+	<head>
+		<title><%= data.site.uri.host %> changed</title>
+	</head>
+	<body><pre>
+Change at <%= data.site.uri.to_s %> - diff follows:
+
+<%= data.diff %>
+	</pre></body>
+</html>

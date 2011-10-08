@@ -1,0 +1,21 @@
+From: <%= from.name %> <<%= from.address %>>
+To: <%= to %>
+Subject: [<%= data.tag %>] <%= data.site.uri.host %> changed
+Content-Type: multipart/alternative; boundary="<%= data.boundary %>"
+MIME-Version: 1.0
+
+<% if data.bodies.key?(:plain) %>
+--<%= data.boundary %>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+
+<%= Base64.encode64(data.bodies[:plain]) %>
+<% end %>
+<% if data.bodies.key?(:html) %>
+--<%= data.boundary %>
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: base64
+
+<%= Base64.encode64(data.bodies[:html]) %>
+<% end %>
+--<%= data.boundary %>--

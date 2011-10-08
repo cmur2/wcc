@@ -334,7 +334,7 @@ module WCC
 			data.diff = diff
 			data.tag = Conf[:tag]
 			
-			Conf.mailer.send(data, @@mail_plain, @@mail_body_plain, MailAddress.new(Conf[:from_mail]), site.emails)
+			Conf.mailer.send(data, @@mail_plain, @@mail_bodies, MailAddress.new(Conf[:from_mail]), site.emails)
 			
 			system("logger -t '#{Conf[:tag]}' 'Change at #{site.uri.to_s} (tag #{site.id}) detected'") if Conf[:syslog]
 			
@@ -346,8 +346,11 @@ module WCC
 			# first use of Conf initializes it
 			WCC.logger = Logger.new(STDOUT)
 			
-			@@mail_plain = load_template('mail.plain.erb')
-			@@mail_body_plain = load_template('mail-body.plain.erb')
+			@@mail_plain = load_template('mail.alt.erb')
+			@@mail_bodies = {
+				:plain => load_template('mail-body.plain.erb'),
+				:html => load_template('mail-body.html.erb')
+			}
 			
 			Conf.sites.each do |site|
 				if checkForUpdate(site)
@@ -363,7 +366,8 @@ module WCC
 		def self.load_template(name)
 			t_path = File.join(Conf[:template_dir], name)
 			t = File.open(t_path, 'r') { |f| f.read }
-			ERB.new(t)
+			# <> omit newline for lines starting with <% and ending in %>
+			ERB.new(t, 0, "<>")
 		end
 	end
 end
