@@ -22,6 +22,7 @@ Gem::Specification.new do |s|
 		"bin/wcc-init",
 		"bin/wcc-upgrade",
 		"doc/Filters.md",
+		"lib/wcc/diff.rb",
 		"lib/wcc/filter.rb",
 		"lib/wcc/mail.rb",
 		"lib/wcc/site.rb",

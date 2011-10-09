@@ -16,9 +16,11 @@ require 'uri'
 require 'yaml'
 
 # ruby gem dependencies
+#require 'diff-lcs'
 require 'htmlentities'
 
 # wcc
+require 'wcc/diff'
 require 'wcc/filter'
 require 'wcc/mail'
 require 'wcc/site'
@@ -271,57 +273,6 @@ module WCC
 		end
 	end
 	
-	class Diff
-		attr_reader :diff
-		
-		def initialize(dstring)
-			@diff = []
-			dstring.lines.each do |line|
-				o = OpenStruct.new
-				# parse line
-				if line.start_with?('+++')
-					o.status = :new
-					o.text = line.substring(3).rstrip
-				elsif line.start_with?('---')
-					o.status = :old
-					o.text = line.substring(3).rstrip
-				elsif line.start_with?('@@')
-					o.status = :range
-					o.text = line.substring(2).rstrip
-				elsif line.start_with?('+')
-					o.status = :ins
-					o.text = line.substring(1).rstrip
-				elsif line.start_with?('-')
-					o.status = :del
-					o.text = line.substring(1).rstrip
-				else
-					o.status = :other
-					o.text = line.rstrip
-				end
-				@diff << o
-			end
-		end
-		
-		def to_s
-			@diff.map do |o|
-				case o.status
-				when :new
-					'+++'+o.text
-				when :old
-					'---'+o.text
-				when :range
-					'@@'+o.text
-				when :ins
-					'+'+o.text
-				when :del
-					'-'+o.text
-				when :other
-					o.text
-				end
-			end.join("\n")
-		end
-	end
-
 	class Prog
 		def self.checkForUpdate(site)
 			WCC.logger.info "Requesting '#{site.uri.to_s}'"
@@ -390,7 +341,7 @@ module WCC
 			
 			data = OpenStruct.new
 			data.site = site
-			data.diff = Diff.new(diff)
+			data.diff = diff.nil? ? nil : WCC::Differ.new(diff)
 			data.tag = Conf[:tag]
 			
 			Conf.mailer.send(data, @@mail_plain, @@mail_bodies, MailAddress.new(Conf[:from_mail]), site.emails)

@@ -2,43 +2,77 @@
 	<head>
 		<title><%= data.site.uri.host %> changed</title>
 		<style type="text/css">
+.msg {
+	font-size: 0.98em;
+}
+
+.diff {
+	font-size: 12px;
+	font-family: 'Bitstream Vera Sans Mono','Courier',monospace;
+}
+
 .diff ul {
 	list-style: none;
 	display: table;
-	margin: 0;
-	padding: 0.5em 0 0 0.5em;
+	padding: 0;
+	margin: 0.5em 0 0 0.5em;
+	border: 1px solid #CCCCCC;
 }
 
 .diff li {
 	padding: 0;
 	display: table-row;
 	margin: 0;
+	background: #f8f8ff;
+}
+
+.diff .new, .diff .old {
+	color: #999;
 }
 
 .diff .ins {
 	background: #dfd;
-	color: #080;
+/*	color: #080;*/
+}
+
+.diff .ins .hilite {
+	background: #afa;
+	margin: 0;
+	padding: 0;
 }
 
 .diff .del {
-	background: #fee;
-	color: #b00;
+	background: #fdd;
+/*	color: #b00;*/
+}
+
+.diff .del .hilite {
+	background: #faa;
+	margin: 0;
+	padding: 0;
 }
 
 .diff .range {
-	background: #eef;
-	color: #00b;
+	background: #eaf2f5;
+	color: #999;
+}
+
+.diff .other {
 }
 		</style>
 	</head>
 	<body>
-		Change at <a href="<%= data.site.uri.to_s %>"><%= data.site.uri.to_s %></a> - diff follows:
-		<div class="diff">
 <% if data.diff.nil? %>
-			Site was first checked so no diff was possible.
+		<div class="msg">
+			Checked <a href="<%= data.site.uri.to_s %>"><%= data.site.uri.to_s %></a> the first time so no diff was possible.
+		</div>
 <% else %>
+		<div class="msg">
+			Change at <a href="<%= data.site.uri.to_s %>"><%= data.site.uri.to_s %></a> - diff follows:
+		</div>
+		<div class="diff">
 			<ul>
-<% for o in data.diff.diff %>
+<% for o in data.diff.di %>
 <% if o.status == :new %>
 				<li class="new">+++<%= o.text %></li>
 <% elsif o.status == :old %>
@@ -46,15 +80,15 @@
 <% elsif o.status == :range %>
 				<li class="range">@@<%= o.text %></li>
 <% elsif o.status == :ins %>
-				<li class="ins"><%= o.text %></li>
+				<li class="ins">+<%= o.html_hilite_text %></li>
 <% elsif o.status == :del %>
-				<li class="del"><%= o.text %></li>
+				<li class="del">-<%= o.html_hilite_text %></li>
 <% else %>
-				<li><%= o.text %></li>
+				<li class="other"><%= o.text.gsub(/^ /, "&nbsp;") %></li>
 <% end %>
 <% end %>
 			</ul>
-<% end %>
 		</div>
+<% end %>
 	</body>
 </html>
