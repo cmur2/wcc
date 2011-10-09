@@ -16,7 +16,7 @@ require 'uri'
 require 'yaml'
 
 # ruby gem dependencies
-#require 'diff-lcs'
+require 'diff-lcs'
 require 'htmlentities'
 
 # wcc

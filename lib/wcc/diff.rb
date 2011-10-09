@@ -1,9 +1,12 @@
 
 module WCC
+	# TODO: Handle tabs/trailing whitespace in output
+
 	class DiffItem
 		attr_accessor :status, :text, :hilite
 		
 		def initialize(line)
+			# parse line
 			if line.start_with?('+++')
 				@status = :new
 				@text = line.substring(3)
@@ -15,13 +18,14 @@ module WCC
 				@text = line.substring(2)
 			elsif line.start_with?('+')
 				@status = :ins
-				@text = line.substring(1)
+				@text = line.substring(1).rstrip
 			elsif line.start_with?('-')
 				@status = :del
-				@text = line.substring(1)
+				@text = line.substring(1).rstrip
 			else
 				@status = :other
-				@text = line
+				@text = line.rstrip
+				@text = ' ' if @text.empty?
 			end
 			@text.gsub!(/\n/, '')
 			@hilite = nil
@@ -30,22 +34,22 @@ module WCC
 		def html_hilite_text(css_klass = 'hilite')
 			return @text if @hilite.nil?
 			
-			i = 1
+			i = 0
 			new_text = ''
 			in_span = false
 			@text.chars.to_a.each do |c|
 				if @hilite.include?(i)
 					if not in_span
 						new_text += "<span class=\"#{css_klass}\">"
+						in_span = true
 					end
-					new_text += c
-					in_span = true
+					new_text += (c == ' ' ? '&nbsp;' : c)
 				else
 					if in_span
 						new_text += "</span>"
+						in_span = false
 					end
 					new_text += c
-					in_span = false
 				end
 				i += 1
 			end
@@ -53,6 +57,8 @@ module WCC
 			new_text
 		end
 		
+		# Returns a representing character for the kind of this diff item.
+		# @return [String] single rep char
 		def rchar
 			case status
 			when :new
@@ -70,6 +76,8 @@ module WCC
 			end
 		end
 		
+		# Returns an unified diff line without trailing newline.
+		# @return [String] unified diff line
 		def to_s
 			case status
 			when :new
@@ -92,18 +100,14 @@ module WCC
 		attr_reader :di
 		
 		def initialize(dstring)
-			@di = []
-			dstring.lines.each do |line|
-				# parse line
-				@di << DiffItem.new(line)
-			end
-			# TODO: compute_hilite, wrong +/- detection
+			@di = dstring.lines.map { |line| DiffItem.new(line) }
+			compute_hilite
 		end
 		
 		def compute_hilite
+			# get representional string for the whole diff
 			s = rchar
-			puts s
-			
+			#puts s
 			mds = []
 			md = s.match(/(@|_)di(@|_)/)
 			while not md.nil?
@@ -116,19 +120,8 @@ module WCC
 			mds.each do |md|
 				i = offset+md.begin(1)+1
 				offset = md.begin(2)+1
-				ranges = Diff::LCS.diff(@di[i].text, @di[i+1].text)
-				@di[i].hilite = []
-				@di[i+1].hilite = []
-				ranges.each do |chg|
-					chg.each do |c|
-						if c.action == '-' and c.element != ''
-							@di[i].hilite << c.position
-						end
-						if c.action == '+' and c.element != ''
-							@di[i+1].hilite << c.position
-						end
-					end
-				end
+				# found a single insertion/deletion pair
+				InLineDiffer.new(@di[i], @di[i+1]).compute_hilite
 			end
 		end
 		
@@ -138,6 +131,40 @@ module WCC
 		
 		def to_s
 			@di.map { |o| o.to_s }.join("\n")
+		end
+	end
+	
+	# Calculates hilite based on per char side-by-side diff for two DiffItems.
+	class InLineDiffer
+		def initialize(a, b)
+			@a = a
+			@b = b
+			@a.hilite = []
+			@b.hilite = []
+		end
+		
+		def compute_hilite
+			#puts @a.text.chars.to_a.inspect
+			#puts @b.text.chars.to_a.inspect
+			# HACK: Diff::LCS with plain strings fails on Ruby 1.8 even with -Ku flag but not: <string>.chars.to_a
+			Diff::LCS.traverse_balanced(@a.text.chars.to_a, @b.text.chars.to_a, self)
+		end
+		
+		def match(e)
+			# don't care - this is called "diff" ;-)
+		end
+		
+		def discard_a(e)
+			@a.hilite << e.old_position if not @a.hilite.include?(e.old_position)
+		end
+		
+		def discard_b(e)
+			@b.hilite << e.new_position if not @b.hilite.include?(e.new_position)
+		end
+		
+		def change(e)
+			@a.hilite << e.old_position if not @a.hilite.include?(e.old_position)
+			@b.hilite << e.new_position if not @b.hilite.include?(e.new_position)
 		end
 	end
 end

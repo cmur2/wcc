@@ -1,7 +1,7 @@
 
 Gem::Specification.new do |s|
 	s.name		= "wcc"
-	s.version	= "0.0.7"
+	s.version	= "0.0.8"
 	s.summary	= "web change checker"
 	s.description = "wcc tracks changes of websites and notifies you by email."
 	s.author	= "Christian Nicolai"
@@ -40,4 +40,5 @@ Gem::Specification.new do |s|
 	s.executables = ["wcc", "wcc-init", "wcc-upgrade"]
 	
 	s.add_runtime_dependency("htmlentities")
+	s.add_runtime_dependency("diff-lcs")
 end
