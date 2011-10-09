@@ -18,6 +18,8 @@ def traverse(root, dst_root, path)
 			rel = p.relative_path_from(root)
 			src = root + rel
 			dst = dst_root + rel
+			# make sure the dst directory exists
+			FileUtils.mkdir_p dst.dirname
 			if dst.exist?
 				# do compare
 				same = FileUtils.compare_file(src, dst)
