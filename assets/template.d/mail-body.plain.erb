@@ -4,4 +4,6 @@ Checked <%= data.site.uri.to_s %> the first time so no diff was possible.
 Change at <%= data.site.uri.to_s %> - diff follows:
 
 <%= data.diff.to_s %>
+
+nHunks: <%= data.diff.nhunks %>, nIns: <%= data.diff.ninsertions %>, nDel: <%= data.diff.ndeletions %>, nLinesC: <%= data.diff.nlinesc %>, nCharsC: <%= data.diff.ncharsc %>
 <% end %>

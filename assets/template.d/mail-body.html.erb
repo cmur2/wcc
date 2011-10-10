@@ -87,6 +87,13 @@
 <% end %>
 			</ul>
 		</div>
+		<div>
+			nHunks: <%= data.diff.nhunks %>, 
+			nIns: <%= data.diff.ninsertions %>, 
+			nDel: <%= data.diff.ndeletions %>, 
+			nLinesC: <%= data.diff.nlinesc %>, 
+			nCharsC: <%= data.diff.ncharsc %>
+		</div>
 <% end %>
 	</body>
 </html>

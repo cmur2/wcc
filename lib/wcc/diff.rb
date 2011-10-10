@@ -3,7 +3,8 @@ module WCC
 	# TODO: Handle tabs/trailing whitespace in output
 
 	class DiffItem
-		attr_accessor :status, :text, :hilite
+		attr_reader :status, :text
+		attr_accessor :hilite
 		
 		def initialize(line)
 			# parse line
@@ -125,6 +126,26 @@ module WCC
 			end
 		end
 		
+		def nhunks
+			@di.inject(0) { |sum,o| sum += (o.status == :range ? 1 : 0) }
+		end
+		
+		def ninsertions
+			@di.inject(0) { |sum,o| sum += (o.status == :ins ? 1 : 0) }
+		end
+		
+		def ndeletions
+			@di.inject(0) { |sum,o| sum += (o.status == :del ? 1 : 0) }
+		end
+		
+		def nlinesc
+			ninsertions + ndeletions
+		end
+		
+		def ncharsc
+			@di.inject(0) { |sum,o| sum += (o.hilite.nil? ? 0 : o.hilite.nitems) }
+		end
+		
 		def rchar
 			@di.map { |o| o.rchar }.join
 		end
@@ -151,7 +172,7 @@ module WCC
 		end
 		
 		def match(e)
-			# don't care - this is called "diff" ;-)
+			# don't care
 		end
 		
 		def discard_a(e)
