@@ -11,7 +11,7 @@ module WCC
 		def to_s; @id end
 	end
 
-	class Filter
+	class Filters
 		@@filters = {}
 		
 		def self.add(id, &block)

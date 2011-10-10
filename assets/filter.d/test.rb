@@ -1,4 +1,4 @@
 
-WCC::Filter.add 'test' do |data|
+WCC::Filters.add 'test' do |data|
 	true
 end

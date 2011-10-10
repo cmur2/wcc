@@ -183,7 +183,7 @@ module WCC
 			Dir[File.join(self[:filter_dir], '*.rb')].each { |file| require file }
 			
 			# attach --no-mails filter
-			WCC::Filter.add '--no-mails' do |data|
+			WCC::Filters.add '--no-mails' do |data|
 				!self[:nomails]
 			end
 		end
@@ -342,7 +342,7 @@ module WCC
 			end
 			
 			# HACK: there *was* an update but no notification is required
-			return false if not Filter.accept(diff, site.filters)
+			return false if not Filters.accept(diff, site.filters)
 			
 			data = OpenStruct.new
 			data.site = site
