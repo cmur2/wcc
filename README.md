@@ -58,6 +58,24 @@ By default wcc only outputs ERROR and FATAL messages to avoid your cron daemon s
 It is recommended to place 'conf.yml' (and optionally the 'filter.d' and 'template.d') within
 a separate directory and use `cd` in cron entry.
 
+Upgrade
+-------
+
+If you want to update your wcc run:
+
+	gem update
+
+Then don't forget to run
+
+	wcc-upgrade
+
+in your '/my/conf' directory which interactively asks to overwrite local 'assets'
+like mail templates and filters with the original ones out of the gem (which you copied
+there using ´wcc-init´ at the beginning).
+
+NOTE: You should **make a backup** (especially of your **conf.yml**) of the '/my/conf'
+directory **before upgrading**.
+
 License
 -------
 
