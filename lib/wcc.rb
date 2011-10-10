@@ -45,6 +45,8 @@ end
 
 module WCC
 
+	VERSION = "1.0.0"
+
 	DIFF_TIME_FMT = '%Y-%m-%d %H:%M:%S %Z'
 	
 	# logging via WCC.logger.blub
@@ -121,6 +123,9 @@ module WCC
 			WCC.logger.formatter = LogFormatter.new((self[:verbose] or self[:debug]))
 
 			# main
+			WCC.logger.info "web change checker (aka wcc) #{WCC::VERSION}"
+			WCC.logger.info "Licensed under Apache License Version 2.0"
+			
 			WCC.logger.info "No config file given, using default 'conf.yml' file" if ARGV.length == 0
 
 			self[:conf] = ARGV[0] || 'conf.yml'

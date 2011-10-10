@@ -1,7 +1,11 @@
 
+$:.push File.expand_path("../lib", __FILE__)
+
+require 'wcc'
+
 Gem::Specification.new do |s|
 	s.name		= "wcc"
-	s.version	= "1.0.0"
+	s.version	= WCC::VERSION
 	s.summary	= "web change checker"
 	s.description = "wcc tracks changes of websites and notifies you by email."
 	s.author	= "Christian Nicolai"
