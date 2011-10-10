@@ -1,12 +1,12 @@
 
 Gem::Specification.new do |s|
 	s.name		= "wcc"
-	s.version	= "0.0.8"
+	s.version	= "1.0.0"
 	s.summary	= "web change checker"
 	s.description = "wcc tracks changes of websites and notifies you by email."
 	s.author	= "Christian Nicolai"
 	s.email		= "chrnicolai@gmail.com"
-	#s.license	= ""
+	s.license	= "Apache License Version 2.0"
 	s.homepage	= "https://github.com/cmur2/wcc"
 	s.rubyforge_project = "wcc"
 	
@@ -27,6 +27,7 @@ Gem::Specification.new do |s|
 		"lib/wcc/mail.rb",
 		"lib/wcc/site.rb",
 		"lib/wcc.rb",
+		"LICENSE",
 		"README.md"
 	]
 	

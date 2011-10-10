@@ -57,3 +57,9 @@ An example crontab entry that runs wcc every 10 minutes might look like this:
 By default wcc only outputs ERROR and FATAL messages to avoid your cron daemon spammin' around.
 It is recommended to place 'conf.yml' (and optionally the 'filter.d' and 'template.d') within
 a separate directory and use `cd` in cron entry.
+
+License
+-------
+
+The web change checker (aka wcc) is licensed under the Apache License, Version 2.0.
+See LICENSE for more information.
