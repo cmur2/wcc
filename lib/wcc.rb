@@ -341,6 +341,8 @@ module WCC
 				diff = %x[diff -U 1 --label "#{old_label}" --label "#{new_label}" #{old_site_file.path} #{Conf.file(site.id + '.site')}]
 			end
 			
+			system("logger -t '#{Conf[:tag]}' 'Change at #{site.uri.to_s} (tag #{site.id}) detected'") if Conf[:syslog]
+			
 			# construct the data made available to filters and templates
 			data = OpenStruct.new
 			data.site = site
@@ -351,8 +353,6 @@ module WCC
 			return false if not Filters.accept(data, site.filters)
 			
 			Conf.mailer.send(data, @@mail_plain, @@mail_bodies, MailAddress.new(Conf[:from_mail]), site.emails)
-			
-			system("logger -t '#{Conf[:tag]}' 'Change at #{site.uri.to_s} (tag #{site.id}) detected'") if Conf[:syslog]
 			
 			true
 		end
