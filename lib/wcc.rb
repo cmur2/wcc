@@ -227,7 +227,8 @@ module WCC
 					yaml_site['emails'].map { |m| MailAddress.new(m) } || [],
 					frefs,
 					yaml_site['auth'] || {},
-					cookie)
+					cookie,
+					yaml_site['check_interval'] || 5)
 			end
 			
 			WCC.logger.debug @sites.length.to_s + (@sites.length == 1 ? ' site' : ' sites') + " loaded\n" +

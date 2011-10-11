@@ -1,15 +1,16 @@
 
 module WCC
 	class Site
-		attr_reader :uri, :emails, :filters, :auth, :cookie, :id
+		attr_reader :uri, :emails, :filters, :auth, :cookie, :check_interval, :id
 
-		def initialize(url, strip_html, emails, filters, auth, cookie)
+		def initialize(url, strip_html, emails, filters, auth, cookie, check_interval)
 			@uri = URI.parse(url)
 			@strip_html = strip_html
 			@emails = emails.is_a?(Array) ? emails : [emails]
 			@filters = filters.is_a?(Array) ? filters : [filters]
 			@auth = auth
 			@cookie = cookie
+			@check_interval = check_interval
 			@id = Digest::MD5.hexdigest(url.to_s)[0...8]
 			# invalid hashes are ""
 			load_hash
