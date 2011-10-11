@@ -17,7 +17,7 @@ Gem::Specification.new do |s|
 	s.files = [
 		"assets/conf.yml",
 		"assets/filter.d/arg-test.rb",
-		"assets/filter.d/ge-nlines-changed.rb",
+		"assets/filter.d/only_changes_of.rb",
 		"assets/filter.d/test.rb",
 		"assets/template.d/mail.alt.erb",
 		"assets/template.d/mail-body.html.erb",
