@@ -1,15 +1,15 @@
 
 WCC::Filters.add 'only_changes_of' do |data,args|
 	case args['t'] || args['type']
-	when 'lines',nil
+	when 'line','lines',nil
 		cmp_val = data.diff.nlinesc
-	when 'chars'
+	when 'char','chars'
 		cmp_val = data.diff.ncharsc
 	when 'ins','insertions'
 		cmp_val = data.diff.ninsertions
 	when 'del','deletions'
 		cmp_val = data.diff.ndeletions
-	when 'hunks'
+	when 'hunk','hunks'
 		cmp_val = data.diff.nhunks
 	end
 	next (cmp_val >= args['at_least']) if args.key?('at_least')
