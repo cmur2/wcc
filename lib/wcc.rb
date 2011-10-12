@@ -369,10 +369,24 @@ module WCC
 			# read filter.d
 			Dir[File.join(Conf[:filter_dir], '*.rb')].each { |file| require file }
 			
-#			if not File.exists?(Conf.file('cache.yml'))
-#				
-#			end
+			# timestamps
+			cache_file = Conf.file('cache.yml')
+			if File.exists?(cache_file)
+				WCC.logger.debug "Load timestamps from '#{cache_file}'"
+
+				# may be *false* if file is empty
+				yaml = YAML.load_file(cache_file)
+
+				if not yaml
+					WCC.logger.info "No timestamps loaded"
+				else
+					@@timestamps = yaml['timestamps']
+				end
+			else
+				@@timestamps = {}
+			end
 			
+			# templates
 			@@mail_plain = load_template('mail.alt.erb')
 			@@mail_bodies = {
 				:plain => load_template('mail-body.plain.erb'),
@@ -380,12 +394,23 @@ module WCC
 			}
 			
 			Conf.sites.each do |site|
+				ts_old = get_timestamp(site)
+				ts_new = Time.now.to_i
+				if (ts_new-ts_old) < site.check_interval*60
+					ts_diff = (ts_new-ts_old)/60
+					WCC.logger.info "Skipping check for #{site.uri.host.to_s} due to check #{ts_diff} minute#{ts_diff == 1 ? '' : 's'} ago."
+					next
+				end
 				if checkForUpdate(site)
 					WCC.logger.warn "#{site.uri.host.to_s} has an update!"
 				else
 					WCC.logger.info "#{site.uri.host.to_s} is unchanged"
 				end
+				update_timestamp(site, ts_new)
 			end
+			
+			# save timestamps
+			File.open(cache_file, 'w+') do |f| YAML.dump({"timestamps" => @@timestamps}, f) end
 		end
 		
 		private
@@ -395,6 +420,14 @@ module WCC
 			t = File.open(t_path, 'r') { |f| f.read }
 			# <> omit newline for lines starting with <% and ending in %>
 			ERB.new(t, 0, "<>")
+		end
+		
+		def self.get_timestamp(site)
+			@@timestamps[site.uri.to_s] || 0
+		end
+		
+		def self.update_timestamp(site, t)
+			@@timestamps[site.uri.to_s] = t
 		end
 	end
 end

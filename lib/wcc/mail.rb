@@ -41,9 +41,9 @@ module WCC
 	# does plain SMTP to host:port using [Net::SMTP].
 	class SmtpMailer
 		def initialize(host, port)
-			WCC.logger.info "Send mail via SMTP to #{@host}:#{@port}"
 			@host = host
 			@port = port
+			WCC.logger.info "Send mail via SMTP to #{@host}:#{@port}"
 		end
 		
 		# Sends a mail built up from some [ERB] templates to the
