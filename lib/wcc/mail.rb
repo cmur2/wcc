@@ -41,6 +41,7 @@ module WCC
 	# does plain SMTP to host:port using [Net::SMTP].
 	class SmtpMailer
 		def initialize(host, port)
+			WCC.logger.info "Send mail via SMTP to #{@host}:#{@port}"
 			@host = host
 			@port = port
 		end
@@ -75,6 +76,38 @@ module WCC
 			end
 		rescue
 			WCC.logger.fatal "Cannot send mails via SMTP to #{@host}:#{@port} : #{$!.to_s}"
+		end
+	end
+	
+	# This "mailer" just dumps a mail's contents into eml files in the current
+	# working directory. This should be for TESTING ONLY as it doesn't
+	# take care of standards and stuff like that...
+	class FakeFileMailer
+		def initialize
+			WCC.logger.info "Write mail to eml-files in #{Dir.getwd}"
+		end
+		
+		def send(data, main, bodies, from, tos = [])
+			# generate a boundary that may be used for multipart
+			data.boundary = "frontier-#{data.site.id}"
+			# generate messages
+			msgs = {}
+			tos.each do |to|
+				data.bodies = {}
+				# eval all body templates
+				bodies.each do |name,template|
+					data.bodies[name] = template.result(binding)
+				end
+				# eval main template
+				msgs[to] = main.result(binding)
+			end
+			# dump mails to eml-files
+			i = 0
+			msgs.each do |to,msg|
+				filename = "#{Time.new.strftime('%Y%m%d-%H%M%S')} to_#{i}.eml"
+				File.open(filename, 'w') { |f| f.write(msg) }
+				i += 1
+			end
 		end
 	end
 end

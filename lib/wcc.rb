@@ -154,6 +154,8 @@ module WCC
 						# yaml parser should provide an integer here
 						@options[:smtp_port] ||= yaml['email']['smtp']['port']
 					end
+				elsif yaml['email'] == 'fake_file'
+					@options[:mailer] = 'fake_file'
 				end
 			end
 			
@@ -243,6 +245,8 @@ module WCC
 			# smtp mailer
 			if Conf[:mailer] == 'smtp'
 				@mailer = SmtpMailer.new(Conf[:smtp_host], Conf[:smtp_port])
+			elsif Conf[:mailer] == 'fake_file'
+				@mailer = FakeFileMailer.new
 			end
 
 			@mailer

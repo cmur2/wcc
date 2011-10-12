@@ -12,6 +12,9 @@ conf:
 #    smtp:
 #      host: localhost
 #      port: 25
+# ...or for TESTING purposes:
+#  email:
+#    fake_file
 
 sites:
   - url: http://google.com/
