@@ -1,5 +1,5 @@
 
-WCC::Filters.add 'only_changes_of' do |data,args|
+WCC::Filters.add 'changes_of' do |data,args|
 	case args['t'] || args['type']
 	when 'line','lines',nil
 		cmp_val = data.diff.nlinesc
