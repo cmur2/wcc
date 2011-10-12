@@ -41,7 +41,7 @@ For using wcc you need to specify some options:
 * either via the command line (see `wcc -h`)
 * or in a configuration file in [YAML](https://secure.wikimedia.org/wikipedia/en/wiki/YAML) format
 
-The location of the configuration file (usually called 'conf.yml' or something like this)
+The location of the configuration file (usually called 'conf.yml')
 can itself be given on command line as last argument. Each option has a hard-coded default
 (e.g. the configuration file name is assumed to be './conf.yml'). Command line options
 overwrite configuration file entries.
