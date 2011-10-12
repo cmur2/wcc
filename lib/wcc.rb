@@ -105,7 +105,6 @@ module WCC
 				opts.on('-f', '--from MAIL', 'Set From: mail address') do |m| self[:from_mail] = m end
 				opts.on('--host HOST', 'Set SMTP host') do |h| self[:host] = h end
 				opts.on('--port PORT', 'Set SMTP port') do |p| self[:port] = p end
-				#opts.on('--init', '--initialize')
 				opts.on('--show-config', 'Show config after loading config file (debug purposes)') do self[:show_config] = true end
 				opts.on('-h', '-?', '--help', 'Display this screen') do
 					puts opts
@@ -170,19 +169,6 @@ module WCC
 				end
 				exit 0
 			end
-			
-			# create cache dir for hash and diff files
-			Dir.mkdir(self[:cache_dir]) unless File.directory?(self[:cache_dir])
-			
-			if(self[:clean])
-				WCC.logger.warn "Cleanup hash and diff files"
-				Dir.foreach(self[:cache_dir]) do |f|
-					File.delete(self.file(f)) if f =~ /^.*\.(md5|site)$/
-				end
-			end
-			
-			# read filter.d
-			Dir[File.join(self[:filter_dir], '*.rb')].each { |file| require file }
 			
 			# attach --no-mails filter
 			WCC::Filters.add '--no-mails' do |data|
@@ -366,6 +352,26 @@ module WCC
 		def self.run!
 			# first use of Conf initializes it
 			WCC.logger = Logger.new(STDOUT)
+			
+			# make sure logger is correctly configured
+			Conf.instance
+			
+			# create cache dir for hash and diff files
+			Dir.mkdir(Conf[:cache_dir]) unless File.directory?(Conf[:cache_dir])
+			
+			if(Conf[:clean])
+				WCC.logger.warn "Cleanup hash and diff files"
+				Dir.foreach(Conf[:cache_dir]) do |f|
+					File.delete(Conf.file(f)) if f =~ /^.*\.(md5|site)$/
+				end
+			end
+			
+			# read filter.d
+			Dir[File.join(Conf[:filter_dir], '*.rb')].each { |file| require file }
+			
+#			if not File.exists?(Conf.file('cache.yml'))
+#				
+#			end
 			
 			@@mail_plain = load_template('mail.alt.erb')
 			@@mail_bodies = {
