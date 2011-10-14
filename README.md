@@ -27,13 +27,13 @@ and then
 
 	wcc-init
 
-At this time you should run the ´wcc´ command only in this directory since wcc reads it's
+At this time you should run the `wcc` command only in this directory since wcc reads it's
 configuration by default from './conf.yml'.
 
 Usage
 -----
 
-The installed 'wcc' gem provides a ´wcc´ binary on the command line.
+The installed 'wcc' gem provides a `wcc` binary on the command line.
 It can invoked by hand or automatically via *cron* on a server environment.
 
 For using wcc you need to specify some options:
@@ -71,7 +71,7 @@ Then don't forget to run
 
 in your '/my/conf' directory which interactively asks to overwrite local 'assets'
 like mail templates and filters with the original ones out of the gem (which you copied
-there using ´wcc-init´ at the beginning).
+there using `wcc-init` at the beginning).
 
 NOTE: You should **make a backup** (especially of your **conf.yml**) of the '/my/conf'
 directory **before upgrading**.
