@@ -1,6 +1,5 @@
 
 module WCC
-	# TODO: Handle tabs/trailing whitespace in output
 
 	class DiffItem
 		attr_reader :status, :text
@@ -92,7 +91,7 @@ module WCC
 			when :del
 				'-'+text
 			when :other
-				text
+				' '+text
 			end
 		end
 	end
