@@ -18,10 +18,10 @@ module WCC
 				@text = line.substring(2)
 			elsif line.start_with?('+')
 				@status = :ins
-				@text = line.substring(1).rstrip
+				@text = line.substring(1)
 			elsif line.start_with?('-')
 				@status = :del
-				@text = line.substring(1).rstrip
+				@text = line.substring(1)
 			else
 				@status = :other
 				@text = line.rstrip
