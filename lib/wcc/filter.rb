@@ -40,6 +40,15 @@ module WCC
 			end
 			block.call(data, args)
 		end
+
+		# API method  - log msg as error
+		def self.error(msg); WCC.logger.error "filter: #{msg}" end
+		# API method  - log msg as warn
+		def self.warn(msg); WCC.logger.warn "filter: #{msg}" end
+		# API method  - log msg as info
+		def self.info(msg); WCC.logger.info "filter: #{msg}" end
+		# API method  - log msg as debug
+		def self.debug(msg); WCC.logger.debug "filter: #{msg}" end
 		
 		# Called by wcc check routine to evaluate all filters
 		# and produce and'ed result of their boolean returns.
