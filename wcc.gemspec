@@ -52,6 +52,6 @@ Gem::Specification.new do |s|
 	
 	s.post_install_message = "NOTE: Remember to ´wcc-upgrade´ your conf.yml directory!"
 	
-	s.add_runtime_dependency("htmlentities")
-	s.add_runtime_dependency("diff-lcs")
+	s.add_runtime_dependency("htmlentities", '~> 4.3')
+	s.add_runtime_dependency("diff-lcs", '~> 1.1')
 end
