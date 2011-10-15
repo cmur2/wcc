@@ -6,11 +6,13 @@ WCC::Filters.add 'rel_changes_of' do |data,args|
 	case args['percent_of']
 	when 'all_lines',nil
 		percent = data.diff.nlinesc.to_f / data.site.content.count("\n").+(1).to_f * 100
+	# TODO: extend rel_changes_of filter
 #	when 'all_chars','all_characters'
 #		percent = ...
 #	when 'nonblank_lines'
 #		percent = ...
 	end
+	WCC::Filters.debug "rel_changes_of #{percent} of #{args['percent_of']}"
 	next (percent >= args['at_least']) if args.key?('at_least')
 	next (percent >  args['more_than']) if args.key?('more_than')
 	next (percent <= args['at_most']) if args.key?('at_most')

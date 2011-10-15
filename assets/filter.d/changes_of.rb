@@ -12,6 +12,7 @@ WCC::Filters.add 'changes_of' do |data,args|
 	when 'hunk','hunks'
 		cmp_val = data.diff.nhunks
 	end
+	WCC::Filters.debug "changes_of #{cmp_val} #{args['t'] || args['type']}"
 	next (cmp_val >= args['at_least']) if args.key?('at_least')
 	next (cmp_val >  args['more_than']) if args.key?('more_than')
 	next (cmp_val <= args['at_most']) if args.key?('at_most')
