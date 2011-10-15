@@ -25,6 +25,8 @@ sites:
       - test
       - arg-test: {number: 5, hello: world}
       - only_changes_of: {at_least: 4, t: lines}
+      # Regex filter that performs matching against <scope> (one of full or diff)
+      - matches: {regex: '(normal|regex)[!]+', flags: i, scope: diff}
       # readable, isn't it?
   - url: https://my.secret.place/
     emails:

@@ -19,6 +19,7 @@ Gem::Specification.new do |s|
 		"assets/filter.d/and.rb",
 		"assets/filter.d/arg-test.rb",
 		"assets/filter.d/changes_of.rb",
+		"assets/filter.d/matches.rb",
 		"assets/filter.d/not.rb",
 		"assets/filter.d/or.rb",
 		"assets/filter.d/rel_changes_of.rb",
