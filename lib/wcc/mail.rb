@@ -66,9 +66,9 @@ module WCC
 			
 			case Conf[:mailer]
 			when 'smtp'
-				SmtpMailer.send(msg, Conf[:from_mail], @to, Conf[:smtp_host], Conf[:smtp_port])
+				self.class.send_smtp(msg, Conf[:from_mail], @to, Conf[:smtp_host], Conf[:smtp_port])
 			when 'fake_file'
-				FakeFileMailer.send(msg, Conf[:from_mail], @to)
+				self.class.send_fake_file(msg, Conf[:from_mail], @to)
 			end
 		end
 		
@@ -97,28 +97,32 @@ module WCC
 				:smtp_port => 25
 			}
 		end
-	end
 	
-	# SmtpMailer is a specific implementation of an mail deliverer that
-	# does plain SMTP to host:port using [Net::SMTP].
-	class SmtpMailer
+		# This is a specific implementation of an mail deliverer that
+		# does plain SMTP to host:port using [Net::SMTP].
+		#
+		# @param [String] msg the mail
 		# @param [MailAddress] from the From: address
 		# @param [MailAddress] to array of To: address
-		def self.send(msg, from, to, host, port)
+		# @param [String] host the SMTP host
+		# @param [Integer] port the SMTP port
+		def self.send_smtp(msg, from, to, host, port)
 			# send message
 			Net::SMTP.start(host, port) do |smtp|
 				smtp.send_message(msg, from.address, to.address)
 			end
 		rescue => ex
-			WCC.logger.fatal "Cannot send mails via SMTP to #{host}:#{port} : #{ex}"
+			WCC.logger.fatal "Cannot send mail via SMTP to #{host}:#{port} : #{ex}"
 		end
-	end
 	
-	# This "mailer" just dumps a mail's contents into eml files in the current
-	# working directory. This should be for TESTING ONLY as it doesn't
-	# take care of standards and stuff like that...
-	class FakeFileMailer
-		def self.send(msg, from, to)
+		# This just dumps a mail's contents into an eml file in the current
+		# working directory. This should be for TESTING ONLY as it doesn't
+		# take care of standards and stuff like that...
+		#
+		# @param [String] msg the mail
+		# @param [MailAddress] from the From: address
+		# @param [MailAddress] to array of To: address
+		def self.send_fake_file(msg, from, to)
 			# dump mail to eml-file
 			filename = "#{Time.new.strftime('%Y%m%d-%H%M%S')} #{to.name}.eml"
 			File.open(filename, 'w') { |f| f.write(msg) }
