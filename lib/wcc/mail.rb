@@ -50,8 +50,7 @@ module WCC
 		# @param [ERB] main the main template
 		# @param [Hash] bodies (:name, ERB template) pairs
 		def notify!(data, main, bodies)
-			#WCC.logger.info "Assume #{@to} was notified!"
-			
+			# from/to addresses
 			data.from = Conf[:from_mail]
 			data.to = @to
 			# generate a boundary that may be used for multipart
@@ -67,10 +66,8 @@ module WCC
 			
 			case Conf[:mailer]
 			when 'smtp'
-				#WCC.logger.info "Send mail via SMTP to #{@host}:#{@port}"
 				SmtpMailer.send(msg, Conf[:from_mail], @to, Conf[:smtp_host], Conf[:smtp_port])
 			when 'fake_file'
-				#WCC.logger.info "Write mail to eml-files in #{Dir.getwd}"
 				FakeFileMailer.send(msg, Conf[:from_mail], @to)
 			end
 			
@@ -82,9 +79,10 @@ module WCC
 				if conf['smtp'].is_a?(Hash)
 					return {
 						:mailer => 'smtp',
+						# TODO: need user@localhost default
 						:from_mail => MailAddress.new(conf['smtp']['from']),
-						:smtp_host => conf['smtp']['host'],
-						:smtp_port => conf['smtp']['port']
+						:smtp_host => conf['smtp']['host'] || 'localhost',
+						:smtp_port => conf['smtp']['port'] || 25
 					}
 				elsif conf['fake_file'].is_a?(Hash)
 					return {

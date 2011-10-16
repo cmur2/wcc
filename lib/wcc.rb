@@ -86,9 +86,6 @@ module WCC
 				:tag => 'wcc',
 				:filter_dir => './filter.d',
 				:template_dir => './template.d',
-#				:mailer => 'smtp',
-#				:smtp_host => 'localhost',
-#				:smtp_port => 25
 			}
 		end
 		
@@ -144,15 +141,10 @@ module WCC
 				@options[:filter_dir] ||= yaml['filterd']
 				@options[:template_dir] ||= yaml['templated']
 				
-				MailNotificator.parse_conf(yaml['email']).each do |k,v| @options[k] ||= v end
-				XMPPNotificator.parse_conf(yaml['jabber']).each do |k,v| @options[k] ||= v end
-				SyslogNotificator.parse_conf(yaml['syslog']).each do |k,v| @options[k] ||= v end
+				MailNotificator.parse_conf(yaml['email']).each { |k,v| @options[k] ||= v }
+				XMPPNotificator.parse_conf(yaml['jabber']).each { |k,v| @options[k] ||= v }
+				SyslogNotificator.parse_conf(yaml['syslog']).each { |k,v| @options[k] ||= v }
 			end
-			
-#			TODO: if self[:from_mail].to_s.empty?
-#				WCC.logger.fatal "No sender mail address given! See help."
-#				exit 1
-#			end
 			
 			if self[:show_config]
 				Conf.default.merge(@options).each do |k,v|

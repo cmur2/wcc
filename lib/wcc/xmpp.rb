@@ -6,6 +6,7 @@ module WCC
 		end
 		
 		def notify!(data, main, bodies)
+			# TODO: implement xmpp
 			WCC.logger.info "Assume #{@jid} was notified!"
 		end
 		
