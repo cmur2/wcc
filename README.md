@@ -1,17 +1,22 @@
 web change checker
 ==================
 
-This is a simple ruby script to track changes of websites and get notified via mail on
+This is a powerful ruby program to track changes of websites and get notified via mail on
 change with configurable scope of adresses per website. All mails contain a unified diff
 from old content to new content so minor changes produce only few lines of text even on large sites.
 
-Note: wcc relies on native `diff` command to produce the unified diff shown in mails -
-plans are to remove this dependency by using [something like this](https://github.com/samg/diffy) later...
+Since version 2.0 wcc has a completely rewritten notification system so emails are now only *one*
+way to recieve notifications - the currently supported other are XMPP/Jabber and the Syslog.
+These changes are reflected in 'conf.yml' as well so take care of migrating it (that basically
+means to create a *recipients* section and update your site entries from *emails* to *notify*).
+
+Note: wcc relies on native `diff` command to produce the unified diff shown in mails and native
+`syslog` command as well as user information from /etc/login.
 
 Setup
 -----
 
-You need Ruby (preferably version 1.8.7) and Rubygems installed
+You need Ruby (preferably version 1.8.7, Ruby 1.9 untested) and Rubygems installed
 (consider using [rvm](http://beginrescueend.com/)). Install wcc:
 
 	gem install wcc
@@ -46,13 +51,18 @@ can itself be given on command line as last argument. Each option has a hard-cod
 (e.g. the configuration file name is assumed to be './conf.yml'). Command line options
 overwrite configuration file entries.
 
-The core option is the From: mail address and the SMTP configuration for sending emails.
-It is highly encouraged to use the configuration file for all rare changing things
-(even because you have to specify the list of tracked sites there anyways).
+To see how such a configuration might look open 'conf.yml' in your '/my/conf' directory after
+doing `wcc-init` - it contains a bunch of comments that describe your options. The basic structure
+is made up from three sections: generic entries in *conf*, user profiles in *recipients* and a
+list of sites to check for changes in *sites*. Each site entry should contain an URL and a
+list of user profile names to notify on change.
 
-An example crontab entry that runs wcc every 10 minutes might look like this:
+An example crontab entry that runs wcc every 5 minutes might look like this:
 
-	*/10 *  * * *   root    cd /path/to/dir/with/conf;./wcc
+	*/5 *  * * *   root    cd /my/conf;./wcc
+
+Since you can configure an individual check_interval per site these 5 minutes in crontab are only
+the least common multiple for wcc check if each sites check_interval has passed.
 
 By default wcc only outputs ERROR and FATAL messages to avoid your cron daemon spammin' around.
 It is recommended to place 'conf.yml' (and optionally the 'filter.d' and 'template.d') within
