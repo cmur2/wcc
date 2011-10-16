@@ -29,8 +29,11 @@ module WCC
 			end
 		end
 		
-		# TODO: finalizer for clean shutdown
 		def self.shut_down
+			if not @@client.nil?
+				#@@client.send(Jabber::Presence.new.set_type(:unavailable))
+				@@client.close
+			end
 		end
 		
 		def self.get_client

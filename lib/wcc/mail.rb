@@ -98,6 +98,8 @@ module WCC
 				:smtp_port => 25
 			}
 		end
+		
+		def self.shut_down; end
 	
 		# This is a specific implementation of an mail deliverer that
 		# does plain SMTP to host:port using [Net::SMTP].

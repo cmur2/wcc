@@ -406,6 +406,11 @@ module WCC
 			
 			# save timestamps
 			File.open(cache_file, 'w+') do |f| YAML.dump({"timestamps" => @@timestamps}, f) end
+			
+			# shut down notificators
+			MailNotificator.shut_down
+			XMPPNotificator.shut_down
+			SyslogNotificator.shut_down
 		end
 		
 		def self.load_template(name)

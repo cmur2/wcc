@@ -9,5 +9,7 @@ module WCC
 		end
 		
 		def self.parse_conf(conf); {} end
+		
+		def self.shut_down; end
 	end
 end
