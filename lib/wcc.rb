@@ -24,6 +24,7 @@ require 'wcc/diff'
 require 'wcc/filter'
 require 'wcc/mail'
 require 'wcc/site'
+require 'wcc/syslog'
 require 'wcc/xmpp'
 
 class String
@@ -83,7 +84,6 @@ module WCC
 				# when you want to use ./tmp it must be writeable
 				:cache_dir => '/var/tmp/wcc',
 				:tag => 'wcc',
-#				:syslog => false,
 				:filter_dir => './filter.d',
 				:template_dir => './template.d',
 #				:mailer => 'smtp',
@@ -91,8 +91,6 @@ module WCC
 #				:smtp_port => 25
 			}
 		end
-		
-		# TODO: class SyslogNotificator
 		
 		def initialize
 			@options = {}
@@ -107,9 +105,6 @@ module WCC
 				opts.on('--clean', 'Remove all saved hash and diff files') do self[:clean] = true end
 				opts.on('-t', '--tag TAG', 'Set TAG used in output') do |t| self[:tag] = t end
 				opts.on('-n', '--no-mails', 'Do not send any emails') do self[:nomails] = true end
-#				opts.on('-f', '--from MAIL', 'Set From: mail address') do |m| self[:from_mail] = m end
-#				opts.on('--host HOST', 'Set SMTP host') do |h| self[:host] = h end
-#				opts.on('--port PORT', 'Set SMTP port') do |p| self[:port] = p end
 				opts.on('--show-config', 'Show config after loading config file (debug purposes)') do self[:show_config] = true end
 				opts.on('-h', '-?', '--help', 'Display this screen') do
 					puts opts
@@ -146,20 +141,15 @@ module WCC
 			if yaml.is_a?(Hash) and (yaml = yaml['conf']).is_a?(Hash)
 				@options[:cache_dir] ||= yaml['cache_dir']
 				@options[:tag] ||= yaml['tag']
-#				@options[:syslog] ||= yaml['use_syslog']
 				@options[:filter_dir] ||= yaml['filterd']
 				@options[:template_dir] ||= yaml['templated']
 				
-				MailNotificator.parse_conf(yaml['email']).each do |k,v|
-					@options[k] ||= v
-				end
-				
-				XMPPNotificator.parse_conf(yaml['jabber']).each do |k,v|
-					@options[k] ||= v
-				end
+				MailNotificator.parse_conf(yaml['email']).each do |k,v| @options[k] ||= v end
+				XMPPNotificator.parse_conf(yaml['jabber']).each do |k,v| @options[k] ||= v end
+				SyslogNotificator.parse_conf(yaml['syslog']).each do |k,v| @options[k] ||= v end
 			end
 			
-#			if self[:from_mail].to_s.empty?
+#			TODO: if self[:from_mail].to_s.empty?
 #				WCC.logger.fatal "No sender mail address given! See help."
 #				exit 1
 #			end
@@ -227,6 +217,7 @@ module WCC
 					cookie = File.open(yaml_site['cookie'], 'r') { |f| f.read }
 				end
 				
+
 				@sites << Site.new(
 					yaml_site['url'], 
 					yaml_site['strip_html'] || true,
@@ -340,8 +331,6 @@ module WCC
 				# diff between OLD and NEW
 				diff = %x[diff -U 1 --label "#{old_label}" --label "#{new_label}" #{old_site_file.path} #{Conf.file(site.id + '.site')}]
 			end
-			
-#			system("logger -t '#{Conf[:tag]}' 'Change at #{site.uri.to_s} (tag #{site.id}) detected'") if Conf[:syslog]
 			
 			# construct the data made available to filters and templates
 			data = OpenStruct.new

@@ -36,6 +36,7 @@ Gem::Specification.new do |s|
 		"lib/wcc/filter.rb",
 		"lib/wcc/mail.rb",
 		"lib/wcc/site.rb",
+		"lib/wcc/syslog.rb",
 		"lib/wcc/xmpp.rb",
 		"lib/wcc.rb",
 		"LICENSE",
