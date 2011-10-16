@@ -1,12 +1,12 @@
 
 module WCC
 	class Site
-		attr_reader :uri, :emails, :filters, :auth, :cookie, :check_interval, :id
+		attr_reader :uri, :notify, :filters, :auth, :cookie, :check_interval, :id
 
-		def initialize(url, strip_html, emails, filters, auth, cookie, check_interval)
+		def initialize(url, strip_html, notify, filters, auth, cookie, check_interval)
 			@uri = URI.parse(url)
 			@strip_html = strip_html
-			@emails = emails.is_a?(Array) ? emails : [emails]
+			@notify = notify.is_a?(Array) ? notify : [notify]
 			@filters = filters.is_a?(Array) ? filters : [filters]
 			@auth = auth
 			@cookie = cookie

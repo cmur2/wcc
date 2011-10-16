@@ -1,5 +1,34 @@
 
 module WCC
+	
+	class MailNotificator
+		def initialize(opts)
+			@to = MailAddress.new(opts)
+		end
+		
+		def notify!(data, main, bodies)
+			WCC.logger.info "Assume #{@to} was notified!"
+		end
+		
+		def self.parse_conf(conf)
+			if conf.is_a?(Hash)
+				if conf['smtp'].is_a?(Hash)
+					return {
+						:mailer => 'smtp',
+						:from_mail => conf['smtp']['from'],
+						:smtp_host => conf['smtp']['host'],
+						:smtp_port => conf['smtp']['port']
+					}
+				elsif conf['fake_file'].is_a?(Hash)
+					return {
+						:mailer => 'fake_file',
+						:from_mail => conf['fake_file']['from']
+					}
+				end
+			end
+		end
+	end
+	
 	# An email address container with internal conversion
 	# routines.
 	class MailAddress
@@ -52,8 +81,8 @@ module WCC
 		# @param [OpenStruct] data used to construct ERB binding
 		# @param [ERB] main the main template
 		# @param [Hash] bodies :name, ERB template pairs
-		# @param [String] from the From: address
-		# @param [Array] tos array of To: addresses
+		# @param [MailAddress] from the From: address
+		# @param [Array] tos array of To: addresses (MailAddress)
 		def send(data, main, bodies, from, tos = [])
 			# generate a boundary that may be used for multipart
 			data.boundary = "frontier-#{data.site.id}"

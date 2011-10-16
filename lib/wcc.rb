@@ -24,6 +24,7 @@ require 'wcc/diff'
 require 'wcc/filter'
 require 'wcc/mail'
 require 'wcc/site'
+require 'wcc/xmpp'
 
 class String
 	# Remove all HTML tags with at least one character name and
@@ -62,6 +63,8 @@ module WCC
 	class Conf
 		include Singleton
 		
+		attr_reader :recipients
+		
 		# use Conf like a hash containing all options
 		def [](key)
 			@options[key.to_sym] || Conf.default[key.to_sym]
@@ -80,14 +83,16 @@ module WCC
 				# when you want to use ./tmp it must be writeable
 				:cache_dir => '/var/tmp/wcc',
 				:tag => 'wcc',
-				:syslog => false,
+#				:syslog => false,
 				:filter_dir => './filter.d',
 				:template_dir => './template.d',
-				:mailer => 'smtp',
-				:smtp_host => 'localhost',
-				:smtp_port => 25
+#				:mailer => 'smtp',
+#				:smtp_host => 'localhost',
+#				:smtp_port => 25
 			}
 		end
+		
+		# TODO: class SyslogNotificator
 		
 		def initialize
 			@options = {}
@@ -102,9 +107,9 @@ module WCC
 				opts.on('--clean', 'Remove all saved hash and diff files') do self[:clean] = true end
 				opts.on('-t', '--tag TAG', 'Set TAG used in output') do |t| self[:tag] = t end
 				opts.on('-n', '--no-mails', 'Do not send any emails') do self[:nomails] = true end
-				opts.on('-f', '--from MAIL', 'Set From: mail address') do |m| self[:from_mail] = m end
-				opts.on('--host HOST', 'Set SMTP host') do |h| self[:host] = h end
-				opts.on('--port PORT', 'Set SMTP port') do |p| self[:port] = p end
+#				opts.on('-f', '--from MAIL', 'Set From: mail address') do |m| self[:from_mail] = m end
+#				opts.on('--host HOST', 'Set SMTP host') do |h| self[:host] = h end
+#				opts.on('--port PORT', 'Set SMTP port') do |p| self[:port] = p end
 				opts.on('--show-config', 'Show config after loading config file (debug purposes)') do self[:show_config] = true end
 				opts.on('-h', '-?', '--help', 'Display this screen') do
 					puts opts
@@ -139,35 +144,50 @@ module WCC
 			# may be false if file is empty
 			yaml = YAML.load_file(self[:conf])
 			if yaml.is_a?(Hash) and (yaml = yaml['conf']).is_a?(Hash)
-				@options[:from_mail] ||= yaml['from_addr']
 				@options[:cache_dir] ||= yaml['cache_dir']
 				@options[:tag] ||= yaml['tag']
-				@options[:syslog] ||= yaml['use_syslog']
+#				@options[:syslog] ||= yaml['use_syslog']
 				@options[:filter_dir] ||= yaml['filterd']
 				@options[:template_dir] ||= yaml['templated']
 				
-				if yaml['email'].is_a?(Hash)
-					if yaml['email']['smtp'].is_a?(Hash)
-						@options[:mailer] = 'smtp'
-						@options[:smtp_host] ||= yaml['email']['smtp']['host']
-						# yaml parser should provide an integer here
-						@options[:smtp_port] ||= yaml['email']['smtp']['port']
-					end
-				elsif yaml['email'] == 'fake_file'
-					@options[:mailer] = 'fake_file'
+				MailNotificator.parse_conf(yaml['email']).each do |k,v|
+					@options[k] ||= v
+				end
+				
+				XMPPNotificator.parse_conf(yaml['jabber']).each do |k,v|
+					@options[k] ||= v
 				end
 			end
 			
-			if self[:from_mail].to_s.empty?
-				WCC.logger.fatal "No sender mail address given! See help."
-				exit 1
-			end
+#			if self[:from_mail].to_s.empty?
+#				WCC.logger.fatal "No sender mail address given! See help."
+#				exit 1
+#			end
 			
 			if self[:show_config]
 				Conf.default.merge(@options).each do |k,v|
 					puts "  #{k.to_s} => #{self[k]}"
 				end
 				exit 0
+			end
+			
+			@recipients = {}
+			WCC.logger.debug "Load recipients from '#{self[:conf]}'"
+			# may be *false* if file is empty
+			yaml = YAML.load_file(self[:conf])
+			if not yaml
+				WCC.logger.info "No recipients loaded"
+			else
+				yaml['recipients'].to_a.each do |yaml_rec|
+					name = yaml_rec.keys.first
+					rec = []
+					yaml_rec[name].to_a.each do |yaml_way|
+						# TODO: find options and pass them to every notificator
+						rec << XMPPNotificator.new(yaml_way['jabber']) if yaml_way.key?('jabber')
+						rec << MailNotificator.new(yaml_way['email']) if yaml_way.key?('email')
+					end
+					@recipients[name] = rec
+				end
 			end
 			
 			# attach --no-mails filter
@@ -182,10 +202,8 @@ module WCC
 			@sites = []
 			
 			WCC.logger.debug "Load sites from '#{Conf[:conf]}'"
-			
 			# may be *false* if file is empty
 			yaml = YAML.load_file(Conf[:conf])
-			
 			if not yaml
 				WCC.logger.info "No sites loaded"
 				return @sites
@@ -212,7 +230,7 @@ module WCC
 				@sites << Site.new(
 					yaml_site['url'], 
 					yaml_site['strip_html'] || true,
-					yaml_site['emails'].map { |m| MailAddress.new(m) } || [],
+					yaml_site['notify'] || [],
 					frefs,
 					yaml_site['auth'] || {},
 					cookie,
@@ -236,6 +254,10 @@ module WCC
 			end
 
 			@mailer
+		end
+		
+		def self.recipients
+			return Conf.instance.recipients
 		end
 		
 		def self.file(path = nil) File.join(self[:cache_dir], path) end
@@ -332,7 +354,7 @@ module WCC
 				diff = %x[diff -U 1 --label "#{old_label}" --label "#{new_label}" #{old_site_file.path} #{Conf.file(site.id + '.site')}]
 			end
 			
-			system("logger -t '#{Conf[:tag]}' 'Change at #{site.uri.to_s} (tag #{site.id}) detected'") if Conf[:syslog]
+#			system("logger -t '#{Conf[:tag]}' 'Change at #{site.uri.to_s} (tag #{site.id}) detected'") if Conf[:syslog]
 			
 			# construct the data made available to filters and templates
 			data = OpenStruct.new
@@ -343,7 +365,14 @@ module WCC
 			# HACK: there *was* an update but no notification is required
 			return false if not Filters.accept(data, site.filters)
 			
-			Conf.mailer.send(data, @@mail_plain, @@mail_bodies, MailAddress.new(Conf[:from_mail]), site.emails)
+			site.notify.each do |name|
+				rec = Conf.recipients[name]
+				if rec.nil?
+					WCC.logger.error "Could not notify recipient #{name} - not found!"
+				else
+					rec.each do |way| way.notify!(data, @@mail_plain, @@mail_bodies) end
+				end
+			end
 			
 			true
 		end
