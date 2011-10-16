@@ -34,6 +34,8 @@ module WCC
 					}
 				end
 			end
+			# no defaults
+			{}
 		end
 		
 		def self.shut_down
