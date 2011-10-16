@@ -70,8 +70,6 @@ module WCC
 			when 'fake_file'
 				FakeFileMailer.send(msg, Conf[:from_mail], @to)
 			end
-			
-			m.send(data, main, bodies, Conf[:from_mail], [@to])
 		end
 		
 		def self.parse_conf(conf)
