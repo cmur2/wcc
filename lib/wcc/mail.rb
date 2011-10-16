@@ -85,7 +85,7 @@ module WCC
 				elsif conf['fake_file'].is_a?(Hash)
 					return {
 						:mailer => 'fake_file',
-						:from_mail => conf['fake_file']['from']
+						:from_mail => conf['fake_file']['from'] || "#{Etc.getlogin}@localhost"
 					}
 				end
 			end

@@ -1,32 +1,39 @@
 # web-change-checker
 
 conf:
-  from_addr: root@localhost
 #  # /var/tmp won't get ereased on restart!
 #  cache_dir: /var/tmp/wcc
 #  tag: wcc
-#  use_syslog: yes
 #  filterd: ./filter.d
 #  templated: ./template.d
 #  email:
 #    smtp:
+#      from: root@localhost
 #      host: localhost
 #      port: 25
 # ...or for TESTING purposes:
 #  email:
-#    fake_file
+#    fake_file:
+#      from: root@localhost
 
+# a recipient is like a user profile, it says in which ways wcc
+# might contact you and provides a central place where to change
+# email addresses etc.
 recipients:
   - me:
     - email: me@my.place
   - my_friend:
     - email: mail@example.com
+  # 'syslog' profile that notifies syslog on change
+  - syslog:
+    - syslog
 
 sites:
   - url: http://google.com/
     notify:
       - me
       - my_friend
+      - syslog
   
   # Filters
   - url: http:/filter-test.com/
