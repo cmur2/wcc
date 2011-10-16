@@ -75,10 +75,10 @@ module WCC
 		def self.parse_conf(conf)
 			if conf.is_a?(Hash)
 				if conf['smtp'].is_a?(Hash)
+					from_mail = MailAddress.new(conf['smtp']['from'] || "#{Etc.getlogin}@localhost")
 					return {
 						:mailer => 'smtp',
-						# TODO: need user@localhost default
-						:from_mail => MailAddress.new(conf['smtp']['from']),
+						:from_mail => from_mails,
 						:smtp_host => conf['smtp']['host'] || 'localhost',
 						:smtp_port => conf['smtp']['port'] || 25
 					}
@@ -89,6 +89,13 @@ module WCC
 					}
 				end
 			end
+			# default is smtp
+			return {
+				:mailer => 'smtp',
+				:from_mail => MailAddress.new("#{Etc.getlogin}@localhost"),
+				:smtp_host => 'localhost',
+				:smtp_port => 25
+			}
 		end
 	end
 	
