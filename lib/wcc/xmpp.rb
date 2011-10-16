@@ -2,7 +2,7 @@
 module WCC
 	class XMPPNotificator
 		def initialize(opts)
-			@jid = opts
+			@jid = Jabber::JID.new(opts)
 		end
 		
 		def notify!(data, main, bodies)

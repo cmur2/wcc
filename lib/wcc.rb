@@ -19,6 +19,7 @@ require 'yaml'
 # ruby gem dependencies
 require 'diff-lcs'
 require 'htmlentities'
+require 'xmpp4r/client'
 
 # wcc
 require 'wcc/diff'
@@ -47,8 +48,6 @@ class String
 end
 
 module WCC
-
-	VERSION = "1.3.0"
 
 	DIFF_TIME_FMT = '%Y-%m-%d %H:%M:%S %Z'
 	

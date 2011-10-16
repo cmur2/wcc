@@ -1,7 +1,7 @@
 
 $:.push File.expand_path("../lib", __FILE__)
 
-require 'wcc'
+require 'wcc/version'
 
 Gem::Specification.new do |s|
 	s.name		= "wcc"
@@ -37,6 +37,7 @@ Gem::Specification.new do |s|
 		"lib/wcc/mail.rb",
 		"lib/wcc/site.rb",
 		"lib/wcc/syslog.rb",
+		"lib/wcc/version.rb",
 		"lib/wcc/xmpp.rb",
 		"lib/wcc.rb",
 		"LICENSE",
@@ -54,6 +55,7 @@ Gem::Specification.new do |s|
 	
 	s.post_install_message = "NOTE: Remember to ´wcc-upgrade´ your conf.yml directory!"
 	
-	s.add_runtime_dependency("htmlentities", '~> 4.3')
-	s.add_runtime_dependency("diff-lcs", '~> 1.1')
+	s.add_runtime_dependency "htmlentities", '~> 4.3'
+	s.add_runtime_dependency "diff-lcs", '~> 1.1'
+	s.add_runtime_dependency "xmpp4r"
 end
