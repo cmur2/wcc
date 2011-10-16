@@ -17,15 +17,22 @@ module WCC
 			m.subject = subject
 			# send it
 			c = self.class.get_client
-			c.send(m)
+			c.send(m) unless c.nil?
 		end
 		
 		def self.parse_conf(conf)
 			if conf.is_a?(Hash)
-				return {
-					:xmpp_jid => Jabber::JID.new(conf['jid']),
-					:xmpp_password => conf['password']
-				}
+				if conf['jid'].nil?
+					WCC.logger.fatal "Missing jabber ID!"
+					return {:xmpp_jid => nil}
+				elsif conf['password'].nil?
+					WCC.logger.fatal "Missing jabber password!"
+				else
+					return {
+						:xmpp_jid => Jabber::JID.new(conf['jid']),
+						:xmpp_password => conf['password']
+					}
+				end
 			end
 		end
 		
@@ -37,11 +44,17 @@ module WCC
 		end
 		
 		def self.get_client
-			if @@client.nil?
+			if @@client.nil? and not Conf[:xmpp_jid].nil?
 				@@client = Jabber::Client.new(Conf[:xmpp_jid])
 				@@client.connect
-				@@client.auth(Conf[:xmpp_password])
-				@@client.send(Jabber::Presence.new.set_status('At your service every night.'))
+				begin
+					@@client.auth(Conf[:xmpp_password])
+					@@client.send(Jabber::Presence.new.set_status('At your service every night.'))
+				rescue Jabber::ClientAuthenticationFailure => ex
+					WCC.logger.fatal "Wrong jabber password for #{Conf[:xmpp_jid]}!"
+					@@client.close
+					@@client = nil
+				end
 			end
 			@@client
 		end
