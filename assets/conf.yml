@@ -11,10 +11,15 @@ conf:
 #      from: root@localhost
 #      host: localhost
 #      port: 25
-# ...or for TESTING purposes:
+#  # ... or for TESTING purposes only:
 #  email:
 #    fake_file:
 #      from: root@localhost
+#  # this allows wcc to send IM messages via
+#  # it's own jabber account
+#  jabber:
+#    jid: wcc@example.org/wcc
+#    password: s3cr3t
 
 # a recipient is like a user profile, it says in which ways wcc
 # might contact you and provides a central place where to change
@@ -22,6 +27,7 @@ conf:
 recipients:
   - me:
     - email: me@my.place
+    - jabber: me@jabber.org
   - my_friend:
     - email: mail@example.com
   # 'syslog' profile that notifies syslog on change
@@ -37,6 +43,7 @@ sites:
   
   # Filters
   - url: http:/filter-test.com/
+    #notify: ...
     # These filters will be executed and every single one has to
     # return 'true' for the user to be notified
     filters:
