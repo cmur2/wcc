@@ -7,7 +7,16 @@ module WCC
 		end
 		
 		def notify!(data, main, bodies)
-			WCC.logger.info "Assume #{@to} was notified!"
+			#WCC.logger.info "Assume #{@to} was notified!"
+			
+			case Conf[:mailer]
+			when 'smtp'
+				m = SmtpMailer.new(Conf[:smtp_host], Conf[:smtp_port])
+			when 'fake_file'
+				m = FakeFileMailer.new
+			end
+			
+			m.send(data, main, bodies, Conf[:from_mail], [@to])
 		end
 		
 		def self.parse_conf(conf)
@@ -15,7 +24,7 @@ module WCC
 				if conf['smtp'].is_a?(Hash)
 					return {
 						:mailer => 'smtp',
-						:from_mail => conf['smtp']['from'],
+						:from_mail => MailAddress.new(conf['smtp']['from']),
 						:smtp_host => conf['smtp']['host'],
 						:smtp_port => conf['smtp']['port']
 					}

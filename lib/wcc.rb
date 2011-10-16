@@ -243,19 +243,6 @@ module WCC
 			@sites
 		end
 		
-		def self.mailer
-			return @mailer unless @mailer.nil?
-
-			# smtp mailer
-			if Conf[:mailer] == 'smtp'
-				@mailer = SmtpMailer.new(Conf[:smtp_host], Conf[:smtp_port])
-			elsif Conf[:mailer] == 'fake_file'
-				@mailer = FakeFileMailer.new
-			end
-
-			@mailer
-		end
-		
 		def self.recipients
 			return Conf.instance.recipients
 		end
