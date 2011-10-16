@@ -2,6 +2,7 @@
 require 'base64'
 require 'digest/md5'
 require 'erb'
+require 'etc'
 require 'iconv'
 require 'logger'
 require 'net/http'
@@ -165,8 +166,12 @@ module WCC
 					rec = []
 					yaml_rec[name].to_a.each do |yaml_way|
 						# TODO: find options and pass them to every notificator
-						rec << XMPPNotificator.new(yaml_way['jabber']) if yaml_way.key?('jabber')
-						rec << MailNotificator.new(yaml_way['email']) if yaml_way.key?('email')
+						if yaml_way.is_a?(Hash)
+							rec << XMPPNotificator.new(yaml_way['jabber']) if yaml_way.key?('jabber')
+							rec << MailNotificator.new(yaml_way['email']) if yaml_way.key?('email')
+						elsif yaml_way == 'syslog'
+							rec << SyslogNotificator.new
+						end
 					end
 					@recipients[name] = rec
 				end

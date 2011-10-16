@@ -1,7 +1,7 @@
 
 module WCC
 	class SyslogNotificator
-		def initialize(opts)
+		def initialize
 		end
 		
 		def notify!(data, main, bodies)
