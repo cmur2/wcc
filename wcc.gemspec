@@ -28,6 +28,7 @@ Gem::Specification.new do |s|
 		"assets/template.d/mail-body.html.erb",
 		"assets/template.d/mail-body.plain.erb",
 		"assets/template.d/mail.plain.erb",
+		"assets/template.d/xmpp-body.plain.erb",
 		"bin/wcc",
 		"bin/wcc-init",
 		"bin/wcc-upgrade",
