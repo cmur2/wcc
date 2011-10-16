@@ -102,7 +102,7 @@ module WCC
 				opts.on('-s', '--simulate', 'Check for update but do not save hash or diff files') do self[:simulate] = true end
 				opts.on('--clean', 'Remove all saved hash and diff files') do self[:clean] = true end
 				opts.on('-t', '--tag TAG', 'Set TAG used in output') do |t| self[:tag] = t end
-				opts.on('-n', '--no-mails', 'Do not send any emails') do self[:nomails] = true end
+				opts.on('-n', '--no-mails', 'Do not notify users in any way') do self[:nomails] = true end
 				opts.on('--show-config', 'Show config after loading config file (debug purposes)') do self[:show_config] = true end
 				opts.on('-h', '-?', '--help', 'Display this screen') do
 					puts opts
@@ -366,6 +366,7 @@ module WCC
 				Dir.foreach(Conf[:cache_dir]) do |f|
 					File.delete(Conf.file(f)) if f =~ /^.*\.(md5|site)$/
 				end
+				# TODO: delete timestamps on clean?
 			end
 			
 			# read filter.d
