@@ -343,7 +343,7 @@ module WCC
 				if rec.nil?
 					WCC.logger.error "Could not notify recipient #{name} - not found!"
 				else
-					rec.each do |way| way.notify!(data, @@mail_plain, @@mail_bodies) end
+					rec.each { |way| way.notify!(data) }
 				end
 			end
 			
@@ -387,13 +387,6 @@ module WCC
 			else
 				@@timestamps = {}
 			end
-			
-			# templates
-			@@mail_plain = load_template('mail.alt.erb')
-			@@mail_bodies = {
-				:plain => load_template('mail-body.plain.erb'),
-				:html => load_template('mail-body.html.erb')
-			}
 			
 			Conf.sites.each do |site|
 				ts_old = get_timestamp(site)

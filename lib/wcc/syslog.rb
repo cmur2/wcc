@@ -4,7 +4,7 @@ module WCC
 		def initialize
 		end
 		
-		def notify!(data, main, bodies)
+		def notify!(data)
 			system("logger -t '#{data.tag}' 'Change at #{data.site.uri.to_s} (tag #{data.site.id}) detected'")
 		end
 		

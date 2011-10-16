@@ -8,7 +8,7 @@ module WCC
 			@jid = Jabber::JID.new(opts)
 		end
 		
-		def notify!(data, main, bodies)
+		def notify!(data)
 			# prepare message
 			subject = "[#{data.tag}] #{data.site.uri.host} changed"
 			body = self.class.get_template.result(binding)

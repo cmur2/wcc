@@ -39,6 +39,9 @@ module WCC
 	end
 	
 	class MailNotificator
+		@@main = nil
+		@@bodies = nil
+		
 		def initialize(opts)
 			@to = MailAddress.new(opts)
 		end
@@ -46,10 +49,8 @@ module WCC
 		# Sends a mail built up from some [ERB] templates to the
 		# specified adresses.
 		#
-		# @param [OpenStruct] data used to construct ERB binding
-		# @param [ERB] main the main template
-		# @param [Hash] bodies (:name, ERB template) pairs
-		def notify!(data, main, bodies)
+		# @param [Object] data used to construct ERB binding
+		def notify!(data)
 			# from/to addresses
 			data.from = Conf[:from_mail]
 			data.to = @to
@@ -58,11 +59,11 @@ module WCC
 			# generate message
 			data.bodies = {}
 			# eval all body templates
-			bodies.each do |name,template|
+			self.class.get_bodies.each do |name,template|
 				data.bodies[name] = template.result(binding)
 			end
 			# eval main template
-			msg = main.result(binding)
+			msg = self.class.get_main.result(binding)
 			
 			case Conf[:mailer]
 			when 'smtp'
@@ -126,6 +127,24 @@ module WCC
 			# dump mail to eml-file
 			filename = "#{Time.new.strftime('%Y%m%d-%H%M%S')} #{to.name}.eml"
 			File.open(filename, 'w') { |f| f.write(msg) }
+		end
+		
+		# template loading
+		def self.get_main
+			if @@main.nil?
+				@@main = WCC::Prog.load_template('mail.alt.erb')
+			end
+			@@main
+		end
+		
+		def self.get_bodies
+			if @@bodies.nil?
+				@@bodies = {
+					:plain => WCC::Prog.load_template('mail-body.plain.erb'),
+					:html => WCC::Prog.load_template('mail-body.html.erb')
+				}
+			end
+			@@bodies
 		end
 	end
 end
