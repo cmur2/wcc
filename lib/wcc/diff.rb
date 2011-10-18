@@ -112,7 +112,7 @@ module WCC
 			md = s.match(/(@|_)di(@|_)/)
 			while not md.nil?
 				mds << md
-				s = s.substring(md.begin(2)+1)
+				s = s.substring(md.begin(2))
 				md = s.match(/(@|_)di(@|_)/)
 			end
 			
