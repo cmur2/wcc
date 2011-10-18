@@ -79,7 +79,7 @@ module WCC
 					from_mail = MailAddress.new(conf['smtp']['from'] || "#{Etc.getlogin}@localhost")
 					return {
 						:mailer => 'smtp',
-						:from_mail => from_mails,
+						:from_mail => from_mail,
 						:smtp_host => conf['smtp']['host'] || 'localhost',
 						:smtp_port => conf['smtp']['port'] || 25
 					}
