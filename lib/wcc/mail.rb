@@ -91,6 +91,7 @@ module WCC
 				end
 			end
 			# default is smtp
+			WCC.logger.debug "Using default SMTP configuration for MailNotificator"
 			return {
 				:mailer => 'smtp',
 				:from_mail => MailAddress.new("#{Etc.getlogin}@localhost"),

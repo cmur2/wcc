@@ -136,15 +136,30 @@ module WCC
 			
 			# may be false if file is empty
 			yaml = YAML.load_file(self[:conf])
-			if yaml.is_a?(Hash) and (yaml = yaml['conf']).is_a?(Hash)
-				@options[:cache_dir] ||= yaml['cache_dir']
-				@options[:tag] ||= yaml['tag']
-				@options[:filter_dir] ||= yaml['filterd']
-				@options[:template_dir] ||= yaml['templated']
-				
-				MailNotificator.parse_conf(yaml['email']).each { |k,v| @options[k] ||= v }
-				XMPPNotificator.parse_conf(yaml['jabber']).each { |k,v| @options[k] ||= v }
-				SyslogNotificator.parse_conf(yaml['syslog']).each { |k,v| @options[k] ||= v }
+			if yaml.is_a?(Hash) and yaml['conf'].is_a?(Hash)
+				yaml['conf'].each do |key,val|
+					case key
+					when 'cache_dir'
+						@options[:cache_dir] ||= val
+					when 'tag'
+						@options[:tag] ||= val
+					when 'filterd'
+						@options[:filter_dir] ||= val
+					when 'templated'
+						@options[:template_dir] ||= val
+					when 'email'
+						# eat the key do nothing
+					when 'jabber'
+						XMPPNotificator.parse_conf(val).each { |k,v| @options[k] ||= v }
+					when 'syslog'
+						SyslogNotificator.parse_conf(val).each { |k,v| @options[k] ||= v }
+					else
+						WCC.logger.warn "Unknown conf option '#{key}' found."
+					end
+				end
+				# try to load MailNotificator to load defaults even when no entry exists
+				# since email has always been the backbone of wcc
+				MailNotificator.parse_conf(yaml['conf']['email']).each { |k,v| @options[k] ||= v }
 			end
 			
 			if self[:show_config]
