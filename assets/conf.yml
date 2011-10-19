@@ -6,6 +6,7 @@ conf:
 #  tag: wcc
 #  filterd: ./filter.d
 #  templated: ./template.d
+#  # default config assuming local mail server
 #  email:
 #    smtp:
 #      from: root@localhost
@@ -47,8 +48,6 @@ sites:
     # These filters will be executed and every single one has to
     # return 'true' for the user to be notified
     filters:
-      - test
-      - arg-test: {number: 5, hello: world}
       - only_changes_of: {at_least: 4, t: lines}
       # Regex filter that performs matching against <scope> (one of full or diff)
       - matches: {regex: '(normal|regex)[!]+', flags: i, scope: diff}
