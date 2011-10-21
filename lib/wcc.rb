@@ -132,11 +132,23 @@ module WCC
 				exit 1
 			end
 			
+			# register standard notificators - these are already loaded
+			Notificators.map 'email', MailNotificator
+			Notificators.map 'jabber', XMPPNotificator
+			Notificators.map 'syslog', SyslogNotificator
+			
 			WCC.logger.debug "Load config from '#{self[:conf]}'"
 			
 			# may be false if file is empty
 			yaml = YAML.load_file(self[:conf])
 			if yaml.is_a?(Hash) and yaml['conf'].is_a?(Hash)
+				
+				# load MailNotificator and it's defaults even if the key is missing
+				# since email has always been the backbone of wcc
+				if not yaml['conf'].key?('email')
+					yaml['conf']['email'] = nil
+				end
+				
 				yaml['conf'].each do |key,val|
 					case key
 					when 'cache_dir'
@@ -147,19 +159,20 @@ module WCC
 						@options[:filter_dir] ||= val
 					when 'templated'
 						@options[:template_dir] ||= val
-					when 'email'
-						# eat the key do nothing
-					when 'jabber'
-						XMPPNotificator.parse_conf(val).each { |k,v| @options[k] ||= v }
-					when 'syslog'
-						SyslogNotificator.parse_conf(val).each { |k,v| @options[k] ||= v }
 					else
-						WCC.logger.warn "Unknown conf option '#{key}' found."
+						if not Notificators.mappings.include?(key)
+							plugin_name = "wcc-#{key}-notificator"
+							WCC.logger.info "Trying to load plugin #{plugin_name}..."
+							begin
+								require plugin_name
+							rescue LoadError
+								WCC.logger.error "Plugin #{plugin_name} not found - maybe try `gem install #{plugin_name}`"
+								next
+							end
+						end
+						Notificators.mappings[key].parse_conf(val).each { |k,v| @options[k] ||= v }
 					end
 				end
-				# try to load MailNotificator to load defaults even when no entry exists
-				# since email has always been the backbone of wcc
-				MailNotificator.parse_conf(yaml['conf']['email']).each { |k,v| @options[k] ||= v }
 			end
 			
 			if self[:show_config]
@@ -182,10 +195,20 @@ module WCC
 					yaml_rec[name].to_a.each do |yaml_way|
 						# TODO: find options and pass them to every notificator
 						if yaml_way.is_a?(Hash)
-							rec << XMPPNotificator.new(yaml_way['jabber']) if yaml_way.key?('jabber')
-							rec << MailNotificator.new(yaml_way['email']) if yaml_way.key?('email')
-						elsif yaml_way == 'syslog'
-							rec << SyslogNotificator.new
+							prim_key = yaml_way.keys.first # and only!
+							klass = Notificators.mappings[prim_key]
+							if klass.nil?
+								WCC.logger.error "Referenced notificator '#{prim_key}' not found!"
+							else
+								rec << klass.new(yaml_way[prim_key])
+							end
+						else
+							klass = Notificators.mappings[yaml_way]
+							if klass.nil?
+								WCC.logger.error "Referenced notificator '#{yaml_way}' not found!"
+							else
+								rec << klass.new
+							end
 						end
 					end
 					@recipients[name] = rec
@@ -229,7 +252,6 @@ module WCC
 					cookie = File.open(yaml_site['cookie'], 'r') { |f| f.read }
 				end
 				
-
 				@sites << Site.new(
 					yaml_site['url'], 
 					yaml_site['strip_html'] || true,
@@ -237,7 +259,8 @@ module WCC
 					frefs,
 					yaml_site['auth'] || {},
 					cookie,
-					yaml_site['check_interval'] || 5)
+					yaml_site['check_interval'] || 5
+				)
 			end
 			
 			WCC.logger.debug @sites.length.to_s + (@sites.length == 1 ? ' site' : ' sites') + " loaded\n" +
@@ -253,6 +276,20 @@ module WCC
 		def self.file(path = nil) File.join(self[:cache_dir], path) end
 		def self.simulate?; self[:simulate] end
 		def self.[](key); Conf.instance[key] end
+	end
+	
+	class Notificators
+		@@mappings = {}
+		
+		# API method - add a mapping from conf string to class object
+		# @param [String] name the string to be used in conf.yml's conf entry
+		# @param [Class] klass the associated notifier class
+		def self.map(name, klass)
+			WCC.logger.debug "Register notificator #{klass.inspect} for #{name}"
+			@@mappings[name] = klass
+		end
+		
+		def self.mappings; @@mappings end
 	end
 
 	class LogFormatter
@@ -424,9 +461,10 @@ module WCC
 			File.open(cache_file, 'w+') do |f| YAML.dump({"timestamps" => @@timestamps}, f) end
 			
 			# shut down notificators
-			MailNotificator.shut_down
-			XMPPNotificator.shut_down
-			SyslogNotificator.shut_down
+			Notificators.mappings.each do |name,klass|
+				WCC.logger.debug "Shut down #{klass}"
+				klass.shut_down
+			end
 		end
 		
 		def self.load_template(name)
