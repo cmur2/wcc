@@ -469,9 +469,12 @@ module WCC
 		
 		def self.load_template(name)
 			t_path = File.join(Conf[:template_dir], name)
-			t = File.open(t_path, 'r') { |f| f.read }
-			# <> omit newline for lines starting with <% and ending in %>
-			ERB.new(t, 0, "<>")
+			if File.exists?(t_path)
+				t = File.open(t_path, 'r') { |f| f.read }
+				# <> omit newline for lines starting with <% and ending in %>
+				return ERB.new(t, 0, "<>")
+			end
+			nil
 		end
 		
 		private
