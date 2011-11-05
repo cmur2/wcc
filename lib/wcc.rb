@@ -129,7 +129,7 @@ module WCC
 			
 			if !File.exists?(self[:conf])
 				WCC.logger.fatal "Config file '#{self[:conf]}' does not exist!"
-				exit 1
+				Prog.exit 1
 			end
 			
 			# register standard notificators - these are already loaded
@@ -179,7 +179,7 @@ module WCC
 				Conf.default.merge(@options).each do |k,v|
 					puts "  #{k.to_s} => #{self[k]}"
 				end
-				exit 0
+				Prog.exit 0
 			end
 			
 			@recipients = {}
@@ -421,7 +421,7 @@ module WCC
 				cache_file = Conf.file('cache.yml')
 				WCC.logger.warn "Removing timestamp cache..."
 				File.delete(cache_file) if File.exists?(cache_file)
-				exit 1
+				Prog.exit 1
 			end
 			
 			# read filter.d
@@ -478,6 +478,10 @@ module WCC
 				return ERB.new(t, 0, "<>")
 			end
 			nil
+		end
+		
+		def self.exit(errno)
+			Kernel::exit errno
 		end
 		
 		private
