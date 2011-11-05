@@ -48,6 +48,26 @@ class String
 	end
 end
 
+class Hash
+	# Recursively merges the other hash into self while
+	# overwriting duplicate keys in self.
+	#
+	# @param [Hash] other the hash to get merged in
+	# @return [Hash] copy of self with other hash merged in
+	def recursive_merge(other)
+		copy = self.dup
+		other.keys.each do |k|
+			if other[k].is_a?(Hash) and self[k].is_a?(Hash)
+				copy[k] = copy[k].recursive_merge(other[key])
+			else
+				# ignore nils from other
+				copy[k] = other[k] unless other[k].nil?
+			end
+		end
+		copy
+	end
+end
+
 module WCC
 
 	DIFF_TIME_FMT = '%Y-%m-%d %H:%M:%S %Z'
@@ -141,14 +161,13 @@ module WCC
 			
 			# may be false if file is empty
 			yaml = YAML.load_file(self[:conf])
+			
+			# inject dummy value {} for 'email' in 'conf' section to make the parser
+			# load MailNotificator and it's defaults even if the key is missing
+			# since email has always been the backbone of wcc
+			yaml = {'conf' => {'email' => {}}}.recursive_merge(yaml) if yaml.is_a?(Hash)
+			
 			if yaml.is_a?(Hash) and yaml['conf'].is_a?(Hash)
-				
-				# load MailNotificator and it's defaults even if the key is missing
-				# since email has always been the backbone of wcc
-				if not yaml['conf'].key?('email')
-					yaml['conf']['email'] = nil
-				end
-				
 				yaml['conf'].each do |key,val|
 					case key
 					when 'cache_dir'
