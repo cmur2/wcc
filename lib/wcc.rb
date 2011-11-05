@@ -414,11 +414,14 @@ module WCC
 			Dir.mkdir(Conf[:cache_dir]) unless File.directory?(Conf[:cache_dir])
 			
 			if(Conf[:clean])
-				WCC.logger.warn "Cleanup hash and diff files"
+				WCC.logger.warn "Removing hash and diff files..."
 				Dir.foreach(Conf[:cache_dir]) do |f|
 					File.delete(Conf.file(f)) if f =~ /^.*\.(md5|site)$/
 				end
-				# TODO: delete timestamps on clean?
+				cache_file = Conf.file('cache.yml')
+				WCC.logger.warn "Removing timestamp cache..."
+				File.delete(cache_file) if File.exists?(cache_file)
+				exit 1
 			end
 			
 			# read filter.d
