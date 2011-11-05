@@ -18,7 +18,7 @@ WCC::Filters.add 'matches' do |data,args|
 	end
 	case args['scope']
 	when 'diff','change',nil
-		md = r.match(data.diff.to_s)
+		md = data.diff.nil? ? nil : r.match(data.diff.to_s)
 	when 'site','full'
 		md = r.match(data.site.content)
 	end
