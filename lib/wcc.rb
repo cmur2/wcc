@@ -58,7 +58,7 @@ class Hash
 		copy = self.dup
 		other.keys.each do |k|
 			if other[k].is_a?(Hash) and self[k].is_a?(Hash)
-				copy[k] = copy[k].recursive_merge(other[key])
+				copy[k] = copy[k].recursive_merge(other[k])
 			else
 				# ignore nils from other
 				copy[k] = other[k] unless other[k].nil?
