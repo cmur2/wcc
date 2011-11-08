@@ -19,7 +19,6 @@ require 'yaml'
 # ruby gem dependencies
 require 'diff-lcs'
 require 'htmlentities'
-require 'xmpp4r/client'
 
 # wcc
 require 'wcc/diff'
@@ -28,7 +27,6 @@ require 'wcc/mail'
 require 'wcc/site'
 require 'wcc/syslog'
 require 'wcc/version'
-require 'wcc/xmpp'
 
 class String
 	# Remove all HTML tags with at least one character name and
@@ -154,7 +152,6 @@ module WCC
 			
 			# register standard notificators - these are already loaded
 			Notificators.map 'email', MailNotificator
-			Notificators.map 'jabber', XMPPNotificator
 			Notificators.map 'syslog', SyslogNotificator
 			
 			WCC.logger.debug "Load config from '#{self[:conf]}'"

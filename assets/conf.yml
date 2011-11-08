@@ -16,11 +16,6 @@ conf:
 #  email:
 #    fake_file:
 #      from: root@localhost
-#  # this allows wcc to send IM messages via
-#  # it's own jabber account
-#  jabber:
-#    jid: wcc@example.org/wcc
-#    password: s3cr3t
 
 # a recipient is like a user profile, it says in which ways wcc
 # might contact you and provides a central place where to change
@@ -28,7 +23,6 @@ conf:
 recipients:
   - me:
     - email: me@my.place
-    - jabber: me@jabber.org
   - my_friend:
     - email: mail@example.com
   # 'syslog' profile that notifies syslog on change

@@ -26,7 +26,6 @@ Gem::Specification.new do |s|
 		"assets/template.d/mail-body.html.erb",
 		"assets/template.d/mail-body.plain.erb",
 		"assets/template.d/mail.plain.erb",
-		"assets/template.d/xmpp-body.plain.erb",
 		"bin/wcc",
 		"bin/wcc-init",
 		"bin/wcc-upgrade",
@@ -37,7 +36,6 @@ Gem::Specification.new do |s|
 		"lib/wcc/site.rb",
 		"lib/wcc/syslog.rb",
 		"lib/wcc/version.rb",
-		"lib/wcc/xmpp.rb",
 		"lib/wcc.rb",
 		"LICENSE",
 		"README.md"
@@ -56,5 +54,4 @@ Gem::Specification.new do |s|
 	
 	s.add_runtime_dependency "htmlentities", '~> 4.3'
 	s.add_runtime_dependency "diff-lcs", '~> 1.1'
-	s.add_runtime_dependency "xmpp4r"
 end
