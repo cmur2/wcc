@@ -489,9 +489,15 @@ module WCC
 			end
 		end
 		
+		# Attempts to read the named template file from template.d
+		# and converts it into ERB.
+		#
+		# @param [String] name file name of template file
+		# @return [ERB] the ERB template or nil when file not found
 		def self.load_template(name)
 			t_path = File.join(Conf[:template_dir], name)
 			if File.exists?(t_path)
+				WCC.logger.debug "Load template '#{name}'"
 				t = File.open(t_path, 'r') { |f| f.read }
 				# <> omit newline for lines starting with <% and ending in %>
 				return ERB.new(t, 0, "<>")
@@ -499,6 +505,23 @@ module WCC
 			nil
 		end
 		
+		# Attempts to write the given raw content to the named template file
+		# in template.d. This should be used to create initial template files on demand
+		# and will work only when file does not already exist.
+		#
+		# @param [String] name file name of template file
+		# @param [String] raw_content content that should be written to template file
+		def self.save_template(name, raw_content)
+			t_path = File.join(Conf[:template_dir], name)
+			if File.exists?(t_path)
+				WCC.logger.warn "Trying to save template '#{name}' which already exists!"
+				return
+			end
+			WCC.logger.info "Save template '#{name}' to #{t_path}"
+			File.open(t_path, 'w') { |f| f.write(raw_content) }
+		end
+		
+		# Central exit function, allows wcc a clean shutdown.
 		def self.exit(errno)
 			Kernel::exit errno
 		end
