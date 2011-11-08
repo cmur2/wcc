@@ -3,7 +3,7 @@
 #       changes than the whole site had lines before.
 
 WCC::Filters.add 'rel_changes_of' do |data,args|
-	next true if data.diffnil?
+	next true if data.diff.nil?
 	case args['percent_of']
 	when 'all_lines',nil
 		percent = data.diff.nlinesc.to_f / data.site.content.count("\n").+(1).to_f * 100
