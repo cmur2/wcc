@@ -55,13 +55,23 @@ module WCC
 		end
 
 		def fetch
-			http = Net::HTTP.new(@uri.host, @uri.port)
-			if @uri.is_a?(URI::HTTPS)
+			retrieve(@uri)
+		end
+
+		def fetch_redirect(new_uri)
+			retrieve(new_uri)
+		end
+
+		private
+
+		def retrieve(uri)
+			http = Net::HTTP.new(uri.host, uri.port)
+			if uri.is_a?(URI::HTTPS)
 				http.use_ssl = true
 				http.verify_mode = OpenSSL::SSL::VERIFY_NONE
 			end
 			http.start do |http|
-				req = Net::HTTP::Get.new(@uri.request_uri)
+				req = Net::HTTP::Get.new(uri.request_uri)
 				if @auth['type'] == 'basic'
 					WCC.logger.debug "Doing basic auth"
 					req.basic_auth(@auth['username'], @auth['password'])

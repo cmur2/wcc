@@ -346,8 +346,27 @@ module WCC
 				WCC.logger.error "Cannot connect to #{site.uri.to_s} : #{ex.to_s}"
 				return false
 			end
-			if not res.kind_of?(Net::HTTPOK)
+			if res.kind_of?(Net::HTTPOK)
+				# be happy!
+			elsif res.kind_of?(Net::HTTPMovedPermanently)
+				loc = res['Location']
+				if loc.nil?
+					WCC.logger.error "Site #{site.uri.to_s} moved permanently - no new location given."
+				else
+					WCC.logger.error "Site #{site.uri.to_s} moved permanently to '#{loc}' - please change your conf.yml adequately!"
+				end
+			elsif res.kind_of?(Net::HTTPSeeOther) or res.kind_of?(Net::HTTPTemporaryRedirect)
+				loc = URI.parse(res['Location'])
+				WCC.logger.warn "Redirect: requesting '#{loc.to_s}'"
+				res = site.fetch_redirect(loc)
+				if not res.kind_of?(Net::HTTPOK)
+					WCC.logger.error "Redirected site #{loc.to_s} returned #{res.code} code, skipping it."
+					WCC.logger.error "Headers: #{res.to_hash.inspect}"
+					return false
+				end
+			else
 				WCC.logger.error "Site #{site.uri.to_s} returned #{res.code} code, skipping it."
+				WCC.logger.error "Headers: #{res.to_hash.inspect}"
 				return false
 			end
 			
