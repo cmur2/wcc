@@ -374,6 +374,13 @@ module WCC
 			elsif res.kind_of?(Net::HTTPForbidden)
 				WCC.logger.error "Site #{site.uri.to_s} forbids access, skipping it."
 				return false
+			elsif res.kind_of?(Net::HTTPInternalServerError)
+				WCC.logger.error "Site #{site.uri.to_s} has internal errors, skipping it."
+				return false
+			elsif res.kind_of?(Net::HTTPServiceUnavailable)
+				#retry_after = res['Retry-After']
+				WCC.logger.warn "Site #{site.uri.to_s} currently not available, skipping it."
+				return false
 			else
 				WCC.logger.error "Site #{site.uri.to_s} returned #{res.code} code, skipping it."
 				WCC.logger.error "Headers: #{res.to_hash.inspect}"
