@@ -84,9 +84,10 @@ module WCC
 						:smtp_port => conf['smtp']['port'] || 25
 					}
 				elsif conf['fake_file'].is_a?(Hash)
+					from_mail = MailAddress.new(conf['fake_file']['from'] || "#{Etc.getlogin}@localhost")
 					return {
 						:mailer => 'fake_file',
-						:from_mail => conf['fake_file']['from'] || "#{Etc.getlogin}@localhost"
+						:from_mail => from_mail
 					}
 				end
 			end
