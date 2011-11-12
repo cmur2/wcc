@@ -65,12 +65,14 @@ module WCC
 		private
 
 		def retrieve(uri)
-			http = Net::HTTP.new(uri.host, uri.port)
+			con = Net::HTTP.new(uri.host, uri.port)
 			if uri.is_a?(URI::HTTPS)
-				http.use_ssl = true
-				http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+				con.use_ssl = true
+				con.verify_mode = OpenSSL::SSL::VERIFY_NONE
 			end
-			http.start do |http|
+			con.start do |http|
+				#http.open_timeout = 20
+				#http.read_timeout = 60
 				req = Net::HTTP::Get.new(uri.request_uri)
 				if @auth['type'] == 'basic'
 					WCC.logger.debug "Doing basic auth"
