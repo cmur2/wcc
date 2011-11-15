@@ -2,11 +2,11 @@ web change checker
 ==================
 
 This is a powerful ruby program to track changes of websites and get notified via mail on
-change with configurable scope of adresses per website. All mails contain a unified diff
+change with configurable scope of addresses per website. All mails contain a unified diff
 from old content to new content so minor changes produce only few lines of text even on large sites.
 
 Since version 2.0 wcc has a completely rewritten notification system so emails are now only *one*
-way to recieve notifications - the currently supported other are XMPP/Jabber and the Syslog.
+way to receive notifications - the currently supported other are XMPP/Jabber and the syslog.
 These changes are reflected in 'conf.yml' as well so take care of migrating it (that basically
 means to create a *recipients* section and update your site entries from *emails* to *notify*).
 
