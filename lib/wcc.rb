@@ -104,7 +104,7 @@ module WCC
 				:cache_dir => '/var/tmp/wcc',
 				:tag => 'wcc',
 				:filter_dir => './filter.d',
-				:template_dir => './template.d',
+				:template_dir => './template.d'
 			}
 		end
 		
@@ -211,20 +211,9 @@ module WCC
 					yaml_rec[name].to_a.each do |yaml_way|
 						# TODO: find options and pass them to every notificator
 						if yaml_way.is_a?(Hash)
-							prim_key = yaml_way.keys.first # and only!
-							klass = Notificators.mappings[prim_key]
-							if klass.nil?
-								WCC.logger.error "Referenced notificator '#{prim_key}' not found!"
-							else
-								rec << klass.new(yaml_way[prim_key])
-							end
+							new_notificator(name, yaml_way.keys.first, yaml_way[yaml_way.keys.first], rec)
 						else
-							klass = Notificators.mappings[yaml_way]
-							if klass.nil?
-								WCC.logger.error "Referenced notificator '#{yaml_way}' not found!"
-							else
-								rec << klass.new
-							end
+							new_notificator(name, yaml_way, nil, rec)
 						end
 					end
 					@recipients[name] = rec
@@ -289,9 +278,26 @@ module WCC
 			return Conf.instance.recipients
 		end
 		
-		def self.file(path = nil) File.join(self[:cache_dir], path) end
+		def self.file(path = nil); File.join(self[:cache_dir], path) end
 		def self.simulate?; self[:simulate] end
 		def self.[](key); Conf.instance[key] end
+		
+		private
+		
+		def new_notificator(rec_name, not_name, opts, rec_out)
+			klass = Notificators.mappings[not_name]
+			if klass.nil?
+				WCC.logger.error "Referenced notificator '#{not_name}' not found!"
+				return
+			end
+			begin
+				if opts.nil?; rec_out << klass.new
+				else rec_out << klass.new(opts)
+				end
+			rescue => ex
+				WCC.logger.error "Recipient '#{rec_name}' not notifiable via '#{not_name}' (skip): #{ex}"
+			end
+		end
 	end
 	
 	class Notificators
