@@ -406,7 +406,7 @@ module WCC
 			begin
 				new_content = Iconv.conv('utf-8', encoding, new_content)
 			rescue => ex
-				WCC.logger.error "Cannot convert site from '#{encoding}': #{ex.to_s}"
+				WCC.logger.error "Cannot convert site #{site.uri.to_s} from '#{encoding}': #{ex.to_s}"
 				return false
 			end
 			
