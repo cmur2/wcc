@@ -100,6 +100,7 @@ module WCC
 				:simulate => false,
 				:clean => false,
 				:nomails => false,
+				:stats => false,
 				# when you want to use ./tmp it must be writeable
 				:cache_dir => '/var/tmp/wcc',
 				:tag => 'wcc',
@@ -175,6 +176,8 @@ module WCC
 						@options[:filter_dir] ||= val
 					when 'templated'
 						@options[:template_dir] ||= val
+					when 'stats'
+						@options[:stats] ||= val
 					else
 						if not Notificators.mappings.include?(key)
 							plugin_name = "wcc-#{key}-notificator"
@@ -445,6 +448,12 @@ module WCC
 			data.diff = diff.nil? ? nil : WCC::Differ.new(diff)
 			data.tag = Conf[:tag]
 			
+			@@stats['nsites'] += 1
+			if not diff.nil?
+				@@stats['nlines'] += data.diff.nlinesc
+				@@stats['nchars'] += data.diff.ncharsc
+			end
+			
 			# HACK: there *was* an update but no notification is required
 			return false if not Filters.accept(data, site.filters)
 			
@@ -453,6 +462,7 @@ module WCC
 				if rec.nil?
 					WCC.logger.error "Could not notify recipient #{name} - not found!"
 				else
+					@@stats['nnotifications'] += 1
 					rec.each { |way| way.notify!(data) }
 				end
 			end
@@ -479,6 +489,9 @@ module WCC
 				cache_file = Conf.file('cache.yml')
 				WCC.logger.warn "Removing timestamp cache..."
 				File.delete(cache_file) if File.exists?(cache_file)
+				stats_file = Conf.file('stats.yml')
+				WCC.logger.warn "Removing stats file..."
+				File.delete(stats_file) if File.exists?(stats_file)
 				Prog.exit 1
 			end
 			
@@ -487,6 +500,7 @@ module WCC
 			
 			# timestamps
 			cache_file = Conf.file('cache.yml')
+			@@timestamps = {}
 			if File.exists?(cache_file)
 				WCC.logger.debug "Load timestamps from '#{cache_file}'"
 
@@ -494,13 +508,19 @@ module WCC
 				yaml = YAML.load_file(cache_file)
 
 				if not yaml
-					WCC.logger.info "No timestamps loaded"
+					WCC.logger.warn "No timestamps loaded"
 				else
 					@@timestamps = yaml['timestamps']
 				end
-			else
-				@@timestamps = {}
 			end
+			
+			# stats
+			stats_file = Conf.file('stats.yml')
+			@@stats = {
+				'nruns' => 0, 'nsites' => 0, 'nnotifications' => 0, 'nlines' => 0, 'nchars' => 0
+			}
+
+			@@stats['nruns'] += 1;
 			
 			Conf.sites.each do |site|
 				ts_old = get_timestamp(site)
@@ -510,6 +530,7 @@ module WCC
 					WCC.logger.info "Skipping check for #{site.uri.host.to_s} due to check #{ts_diff} minute#{ts_diff == 1 ? '' : 's'} ago."
 					next
 				end
+				# TODO: move into notifier ;)
 				if checkForUpdate(site)
 					WCC.logger.warn "#{site.uri.host.to_s} has an update!"
 				else
@@ -520,6 +541,24 @@ module WCC
 			
 			# save timestamps
 			File.open(cache_file, 'w+') do |f| YAML.dump({"timestamps" => @@timestamps}, f) end
+			
+			# save stats
+			if Conf[:stats]
+				if File.exists?(stats_file)
+					WCC.logger.debug "Load stats from '#{stats_file}'"
+					yaml = YAML.load_file(stats_file)
+					if not yaml
+						WCC.logger.warn "No stats loaded"
+					else
+						stats = yaml['stats']
+						@@stats.each do |k,v|
+							puts k, @@stats[k], stats[k]
+							@@stats[k] += stats[k]
+						end
+					end
+				end
+				File.open(stats_file, 'w+') do |f| YAML.dump({"stats" => @@stats}, f) end
+			end
 			
 			# shut down notificators
 			Notificators.mappings.each do |name,klass|
