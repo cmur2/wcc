@@ -6,6 +6,7 @@ conf:
 #  tag: wcc
 #  filterd: ./filter.d
 #  templated: ./template.d
+#  stats: yes
 #  # default config assuming local mail server
 #  email:
 #    smtp:
