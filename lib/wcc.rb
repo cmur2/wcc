@@ -451,7 +451,7 @@ module WCC
 			@@stats['nsites'] += 1
 			if not diff.nil?
 				@@stats['nlines'] += data.diff.nlinesc
-				@@stats['nchars'] += data.diff.ncharsc
+				@@stats['nhunks'] += data.diff.nhunks
 			end
 			
 			# HACK: there *was* an update but no notification is required
@@ -486,6 +486,7 @@ module WCC
 				Dir.foreach(Conf[:cache_dir]) do |f|
 					File.delete(Conf.file(f)) if f =~ /^.*\.(md5|site)$/
 				end
+				# special files
 				cache_file = Conf.file('cache.yml')
 				WCC.logger.warn "Removing timestamp cache..."
 				File.delete(cache_file) if File.exists?(cache_file)
@@ -515,9 +516,8 @@ module WCC
 			end
 			
 			# stats
-			stats_file = Conf.file('stats.yml')
 			@@stats = {
-				'nruns' => 0, 'nsites' => 0, 'nnotifications' => 0, 'nlines' => 0, 'nchars' => 0
+				'nruns' => 0, 'nsites' => 0, 'nnotifications' => 0, 'nlines' => 0, 'nhunks' => 0
 			}
 
 			@@stats['nruns'] += 1;
@@ -543,6 +543,7 @@ module WCC
 			File.open(cache_file, 'w+') do |f| YAML.dump({"timestamps" => @@timestamps}, f) end
 			
 			# save stats
+			stats_file = Conf.file('stats.yml')
 			if Conf[:stats]
 				if File.exists?(stats_file)
 					WCC.logger.debug "Load stats from '#{stats_file}'"
@@ -551,10 +552,7 @@ module WCC
 						WCC.logger.warn "No stats loaded"
 					else
 						stats = yaml['stats']
-						@@stats.each do |k,v|
-							puts k, @@stats[k], stats[k]
-							@@stats[k] += stats[k]
-						end
+						@@stats.each do |k,v| @@stats[k] += stats[k] end
 					end
 				end
 				File.open(stats_file, 'w+') do |f| YAML.dump({"stats" => @@stats}, f) end
