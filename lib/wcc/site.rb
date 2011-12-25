@@ -62,6 +62,48 @@ module WCC
 			retrieve(new_uri)
 		end
 
+		def handle_http_errors(res)
+			if res.kind_of?(Net::HTTPMovedPermanently)
+				loc = res['Location']
+				if loc.nil?
+					WCC.logger.error "Site #{@uri.to_s} moved permanently, skippong it - no new location given."
+				else
+					WCC.logger.error "Site #{@uri.to_s} moved permanently to '#{loc}', skipping it - please update your conf.yml adequately!"
+				end
+				return true
+			elsif res.kind_of?(Net::HTTPSeeOther) or res.kind_of?(Net::HTTPTemporaryRedirect)
+				loc = URI.parse(res['Location'])
+				WCC.logger.warn "Redirect: requesting '#{loc.to_s}'"
+				res = site.fetch_redirect(loc)
+				if not res.kind_of?(Net::HTTPOK)
+					WCC.logger.error "Redirected site #{loc.to_s} returned #{res.code} code, skipping it."
+					WCC.logger.error "Headers: #{res.to_hash.inspect}"
+					return true
+				end
+			elsif res.kind_of?(Net::HTTPUnauthorized)
+				WCC.logger.error "Site #{@uri.to_s} demands authentication for '#{res['www-authenticate']}', skipping it - consider using 'auth:' option in your conf.yml."
+				return true
+			elsif res.kind_of?(Net::HTTPNotFound)
+				WCC.logger.error "Site #{@uri.to_s} not found, skipping it."
+				return true
+			elsif res.kind_of?(Net::HTTPForbidden)
+				WCC.logger.error "Site #{@uri.to_s} forbids access, skipping it."
+				return true
+			elsif res.kind_of?(Net::HTTPInternalServerError)
+				WCC.logger.error "Site #{@uri.to_s} has internal errors, skipping it."
+				return true
+			elsif res.kind_of?(Net::HTTPServiceUnavailable)
+				#retry_after = res['Retry-After']
+				WCC.logger.warn "Site #{@uri.to_s} currently not available, skipping it."
+				return true
+			else
+				WCC.logger.error "Site #{@uri.to_s} returned #{res.code} code, skipping it."
+				WCC.logger.error "Headers: #{res.to_hash.inspect}"
+				return true
+			end
+			false
+		end
+
 		private
 
 		def retrieve(uri)

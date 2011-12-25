@@ -350,51 +350,13 @@ module WCC
 				res = site.fetch
 			rescue Timeout::Error => ex
 				# don't claim on this
-				return false
+				return :noupdate
 			rescue => ex
 				WCC.logger.error "Cannot connect to #{site.uri.to_s} : #{ex.to_s}"
-				@@stats['nerrors'] += 1
-				return false
+				return :error
 			end
-			if res.kind_of?(Net::HTTPOK)
-				# be happy!
-			elsif res.kind_of?(Net::HTTPMovedPermanently)
-				loc = res['Location']
-				if loc.nil?
-					WCC.logger.error "Site #{site.uri.to_s} moved permanently, skippong it - no new location given."
-				else
-					WCC.logger.error "Site #{site.uri.to_s} moved permanently to '#{loc}', skipping it - please update your conf.yml adequately!"
-				end
-				return false
-			elsif res.kind_of?(Net::HTTPSeeOther) or res.kind_of?(Net::HTTPTemporaryRedirect)
-				loc = URI.parse(res['Location'])
-				WCC.logger.warn "Redirect: requesting '#{loc.to_s}'"
-				res = site.fetch_redirect(loc)
-				if not res.kind_of?(Net::HTTPOK)
-					WCC.logger.error "Redirected site #{loc.to_s} returned #{res.code} code, skipping it."
-					WCC.logger.error "Headers: #{res.to_hash.inspect}"
-					return false
-				end
-			elsif res.kind_of?(Net::HTTPUnauthorized)
-				WCC.logger.error "Site #{site.uri.to_s} demands authentication for '#{res['www-authenticate']}', skipping it - consider using 'auth:' option in your conf.yml."
-				return false
-			elsif res.kind_of?(Net::HTTPNotFound)
-				WCC.logger.error "Site #{site.uri.to_s} not found, skipping it."
-				return false
-			elsif res.kind_of?(Net::HTTPForbidden)
-				WCC.logger.error "Site #{site.uri.to_s} forbids access, skipping it."
-				return false
-			elsif res.kind_of?(Net::HTTPInternalServerError)
-				WCC.logger.error "Site #{site.uri.to_s} has internal errors, skipping it."
-				return false
-			elsif res.kind_of?(Net::HTTPServiceUnavailable)
-				#retry_after = res['Retry-After']
-				WCC.logger.warn "Site #{site.uri.to_s} currently not available, skipping it."
-				return false
-			else
-				WCC.logger.error "Site #{site.uri.to_s} returned #{res.code} code, skipping it."
-				WCC.logger.error "Headers: #{res.to_hash.inspect}"
-				return false
+			if site.handle_http_errors(res)
+				return :error
 			end
 			
 			new_content = res.body
@@ -411,16 +373,15 @@ module WCC
 				new_content = Iconv.conv('utf-8', encoding, new_content)
 			rescue => ex
 				WCC.logger.error "Cannot convert site #{site.uri.to_s} from '#{encoding}': #{ex.to_s}"
-				@@stats['nerrors'] += 1
-				return false
+				return :error
 			end
-			
+
 			# strip html
 			new_content = new_content.strip_html if site.strip_html?
 			new_hash = Digest::MD5.hexdigest(new_content)
 			
 			WCC.logger.debug "Compare hashes\n  old: #{site.hash.to_s}\n  new: #{new_hash.to_s}"
-			return false if new_hash == site.hash
+			return :noupdate if new_hash == site.hash
 			
 			# do not try diff or anything if site was never checked before
 			if site.new?
@@ -457,20 +418,19 @@ module WCC
 			end
 			
 			# HACK: there *was* an update but no notification is required
-			return false if not Filters.accept(data, site.filters)
+			return :noupdate if not Filters.accept(data, site.filters)
 			
 			site.notify.each do |name|
 				rec = Conf.recipients[name]
 				if rec.nil?
 					WCC.logger.error "Could not notify recipient #{name} - not found!"
-					@@stats['nerrors'] += 1
 				else
 					@@stats['nnotifications'] += 1
 					rec.each { |way| way.notify!(data) }
 				end
 			end
 			
-			true
+			:update
 		end
 
 		# main
@@ -520,7 +480,9 @@ module WCC
 			
 			# stats
 			@@stats = {
-				'nruns' => 0, 'nsites' => 0, 'nnotifications' => 0, 'nerrors' => 0, 'nlines' => 0, 'nhunks' => 0
+				'nruns' => 0,
+				'nsites' => 0, 'nnotifications' => 0, 'nerrors' => 0,
+				'nlines' => 0, 'nhunks' => 0
 			}
 
 			@@stats['nruns'] += 1;
@@ -533,11 +495,14 @@ module WCC
 					WCC.logger.info "Skipping check for #{site.uri.host.to_s} due to check #{ts_diff} minute#{ts_diff == 1 ? '' : 's'} ago."
 					next
 				end
-				# TODO: move into notifier ;)
-				if checkForUpdate(site)
+				status = checkForUpdate(site)
+				case status
+				when :update
 					WCC.logger.warn "#{site.uri.host.to_s} has an update!"
-				else
+				when :noupdate
 					WCC.logger.info "#{site.uri.host.to_s} is unchanged"
+				when :error
+					@@stats['nerrors'] += 1
 				end
 				update_timestamp(site, ts_new)
 			end
