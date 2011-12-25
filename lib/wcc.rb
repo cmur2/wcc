@@ -353,6 +353,7 @@ module WCC
 				return false
 			rescue => ex
 				WCC.logger.error "Cannot connect to #{site.uri.to_s} : #{ex.to_s}"
+				@@stats['nerrors'] += 1
 				return false
 			end
 			if res.kind_of?(Net::HTTPOK)
@@ -410,6 +411,7 @@ module WCC
 				new_content = Iconv.conv('utf-8', encoding, new_content)
 			rescue => ex
 				WCC.logger.error "Cannot convert site #{site.uri.to_s} from '#{encoding}': #{ex.to_s}"
+				@@stats['nerrors'] += 1
 				return false
 			end
 			
@@ -461,6 +463,7 @@ module WCC
 				rec = Conf.recipients[name]
 				if rec.nil?
 					WCC.logger.error "Could not notify recipient #{name} - not found!"
+					@@stats['nerrors'] += 1
 				else
 					@@stats['nnotifications'] += 1
 					rec.each { |way| way.notify!(data) }
@@ -517,7 +520,7 @@ module WCC
 			
 			# stats
 			@@stats = {
-				'nruns' => 0, 'nsites' => 0, 'nnotifications' => 0, 'nlines' => 0, 'nhunks' => 0
+				'nruns' => 0, 'nsites' => 0, 'nnotifications' => 0, 'nerrors' => 0, 'nlines' => 0, 'nhunks' => 0
 			}
 
 			@@stats['nruns'] += 1;
