@@ -401,7 +401,7 @@ module WCC
 			end
 			nil
 		end
-		
+
 		# Attempts to write the given raw content to the named template file
 		# in template.d. This should be used to create initial template files on demand
 		# and will work only when file does not already exist.
@@ -540,13 +540,11 @@ module WCC
 			end
 
 			# construct the data made available to filters and templates
-			data = OpenStruct.new
-			data.site = site
-			data.diff = diff.nil? ? nil : WCC::Differ.new(diff)
-			data.tag = Conf[:tag]
+			data = OpenStruct.new(:site => site, :tag => Conf[:tag],
+				:diff => diff.nil? ? nil : WCC::Differ.new(diff))
 			
 			@@stats['nsites'] += 1
-			if not diff.nil?
+			if not data.diff.nil?
 				@@stats['nlines'] += data.diff.nlinesc
 				@@stats['nhunks'] += data.diff.nhunks
 			end
