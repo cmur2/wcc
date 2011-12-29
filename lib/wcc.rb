@@ -344,42 +344,181 @@ module WCC
 	end
 	
 	class Prog
+		def self.run!
+			# make sure logger is correctly configured
+			WCC.logger = Logger.new(STDOUT)
+			# first use of Conf initializes it
+			Conf.instance
+			
+			create_cache_dir
+			clean_cache_dir if Conf[:clean]
+			load_filters
+			load_timestamps
+			
+			# stats
+			@@stats = {
+				'nruns' => 1,
+				'nsites' => 0, 'nnotifications' => 0, 'nerrors' => 0,
+				'nlines' => 0, 'nhunks' => 0
+			}
+			
+			Conf.sites.each do |site|
+				ts_old = get_timestamp(site)
+				ts_new = Time.now.to_i
+				if (ts_new-ts_old) < site.check_interval*60
+					ts_diff = (ts_new-ts_old)/60
+					WCC.logger.info "Skipping check for #{site.uri.host.to_s} due to check #{ts_diff} minute#{ts_diff == 1 ? '' : 's'} ago."
+					next
+				end
+				case checkForUpdate(site)
+				when :update
+					WCC.logger.warn "#{site.uri.host.to_s} has an update!"
+				when :noupdate
+					WCC.logger.info "#{site.uri.host.to_s} is unchanged"
+				when :error
+					@@stats['nerrors'] += 1
+				end
+				update_timestamp(site, ts_new)
+			end
+			
+			save_timestamps
+			update_stats if Conf[:stats]
+			shut_down_notificators
+		end
+
+		# Attempts to read the named template file from template.d
+		# and converts it into ERB.
+		#
+		# @param [String] name file name of template file
+		# @return [ERB] the ERB template or nil when file not found
+		def self.load_template(name)
+			t_path = File.join(Conf[:template_dir], name)
+			if File.exists?(t_path)
+				WCC.logger.debug "Load template '#{name}'"
+				t = File.open(t_path, 'r') { |f| f.read }
+				# <> omit newline for lines starting with <% and ending in %>
+				return ERB.new(t, 0, "<>")
+			end
+			nil
+		end
+		
+		# Attempts to write the given raw content to the named template file
+		# in template.d. This should be used to create initial template files on demand
+		# and will work only when file does not already exist.
+		#
+		# @param [String] name file name of template file
+		# @param [String] raw_content content that should be written to template file
+		def self.save_template(name, raw_content)
+			t_path = File.join(Conf[:template_dir], name)
+			if File.exists?(t_path)
+				WCC.logger.warn "Trying to save template '#{name}' which already exists!"
+				return
+			end
+			WCC.logger.info "Save template '#{name}' to #{t_path}"
+			File.open(t_path, 'w') { |f| f.write(raw_content) }
+		end
+		
+		# Central exit function, allows wcc a clean shutdown.
+		def self.exit(errno)
+			Kernel::exit errno
+		end
+		
+		private
+		
+		def self.get_timestamp(site)
+			@@timestamps[site.uri.to_s] || 0
+		end
+		
+		def self.update_timestamp(site, t)
+			@@timestamps[site.uri.to_s] = t
+		end
+		
+		def self.create_cache_dir
+			Dir.mkdir(Conf[:cache_dir]) unless File.directory?(Conf[:cache_dir])
+		end
+
+		def self.clean_cache_dir
+			WCC.logger.warn "Removing hash and diff files..."
+			Dir.foreach(Conf[:cache_dir]) do |f|
+				File.delete(Conf.file(f)) if f =~ /^.*\.(md5|site)$/
+			end
+			# special files
+			cache_file = Conf.file('cache.yml')
+			WCC.logger.warn "Removing timestamp cache..."
+			File.delete(cache_file) if File.exists?(cache_file)
+			stats_file = Conf.file('stats.yml')
+			WCC.logger.warn "Removing stats file..."
+			File.delete(stats_file) if File.exists?(stats_file)
+			Prog.exit 1
+		end
+
+		def self.load_filters
+			Dir[File.join(Conf[:filter_dir], '*.rb')].each do |file|
+				require file
+			end
+		end
+
+		def self.load_timestamps
+			cache_file = Conf.file('cache.yml')
+			@@timestamps = {}
+			if File.exists?(cache_file)
+				WCC.logger.debug "Load timestamps from '#{cache_file}'"
+				# may be *false* if file is empty
+				yaml = YAML.load_file(cache_file)
+				if not yaml
+					WCC.logger.warn "No timestamps loaded"
+				else
+					@@timestamps = yaml['timestamps']
+				end
+			end
+		end
+
+		def self.save_timestamps
+			cache_file = Conf.file('cache.yml')
+			File.open(cache_file, 'w+') do |f| YAML.dump({"timestamps" => @@timestamps}, f) end
+		end
+
+		def self.update_stats
+			stats_file = Conf.file('stats.yml')
+			if File.exists?(stats_file)
+				WCC.logger.debug "Load stats from '#{stats_file}'"
+				yaml = YAML.load_file(stats_file)
+				if not yaml
+					WCC.logger.warn "No stats loaded"
+				else
+					# merge stats infos
+					@@stats.each do |k,v| @@stats[k] += yaml['stats'][k] end
+				end
+			end
+			File.open(stats_file, 'w+') do |f| YAML.dump({"stats" => @@stats}, f) end
+		end
+
+		def self.shut_down_notificators
+			Notificators.mappings.each do |name,klass|
+				WCC.logger.debug "Shut down #{klass}"
+				klass.shut_down
+			end
+		end
+		
 		def self.checkForUpdate(site)
 			WCC.logger.info "Requesting '#{site.uri.to_s}'"
 			begin
 				res = site.fetch
 			rescue Timeout::Error => ex
-				# don't claim on this
-				return :noupdate
+				return :noupdate # don't claim on this
 			rescue => ex
 				WCC.logger.error "Cannot connect to #{site.uri.to_s} : #{ex.to_s}"
 				return :error
 			end
-			if site.handle_http_errors(res)
-				return :error
-			end
+			return :error if handle_http_errors(res, site)
 			
-			new_content = res.body
+			new_content = get_utf8_body(res, site)
+			return :error if new_content.nil?
 			
-			# detect encoding from http header, meta element, default utf-8
-			# do not use utf-8 regex because it will fail on non utf-8 pages
-			encoding = (res['content-type'].to_s.match(/;\s*charset=([A-Za-z0-9-]*)/i).to_a[1] || 
-						new_content.match(/<meta.*charset=([a-zA-Z0-9-]*).*/i).to_a[1]).to_s.downcase || 'utf-8'
-			
-			WCC.logger.info "Encoding is '#{encoding}'"
-			
-			# convert to utf-8
-			begin
-				new_content = Iconv.conv('utf-8', encoding, new_content)
-			rescue => ex
-				WCC.logger.error "Cannot convert site #{site.uri.to_s} from '#{encoding}': #{ex.to_s}"
-				return :error
-			end
-
 			# strip html
 			new_content = new_content.strip_html if site.strip_html?
+
 			new_hash = Digest::MD5.hexdigest(new_content)
-			
 			WCC.logger.debug "Compare hashes\n  old: #{site.hash.to_s}\n  new: #{new_hash.to_s}"
 			return :noupdate if new_hash == site.hash
 			
@@ -428,156 +567,61 @@ module WCC
 			:update
 		end
 
-		# main
-		def self.run!
-			# make sure logger is correctly configured
-			WCC.logger = Logger.new(STDOUT)
-			
-			# first use of Conf initializes it
-			Conf.instance
-			
-			# create cache dir for hash and diff files
-			Dir.mkdir(Conf[:cache_dir]) unless File.directory?(Conf[:cache_dir])
-			
-			clean_cache_dir if Conf[:clean]
-			
-			# read filter.d
-			Dir[File.join(Conf[:filter_dir], '*.rb')].each { |file| require file }
-			
-			load_timestamps
-			
-			# stats
-			@@stats = {
-				'nruns' => 1,
-				'nsites' => 0, 'nnotifications' => 0, 'nerrors' => 0,
-				'nlines' => 0, 'nhunks' => 0
-			}
-			
-			Conf.sites.each do |site|
-				ts_old = get_timestamp(site)
-				ts_new = Time.now.to_i
-				if (ts_new-ts_old) < site.check_interval*60
-					ts_diff = (ts_new-ts_old)/60
-					WCC.logger.info "Skipping check for #{site.uri.host.to_s} due to check #{ts_diff} minute#{ts_diff == 1 ? '' : 's'} ago."
-					next
-				end
-				status = checkForUpdate(site)
-				case status
-				when :update
-					WCC.logger.warn "#{site.uri.host.to_s} has an update!"
-				when :noupdate
-					WCC.logger.info "#{site.uri.host.to_s} is unchanged"
-				when :error
-					@@stats['nerrors'] += 1
-				end
-				update_timestamp(site, ts_new)
-			end
-			
-			save_timestamps
-			update_stats if Conf[:stats]
-			
-			# shut down notificators
-			Notificators.mappings.each do |name,klass|
-				WCC.logger.debug "Shut down #{klass}"
-				klass.shut_down
-			end
-		end
-
-		def self.clean_cache_dir
-			WCC.logger.warn "Removing hash and diff files..."
-			Dir.foreach(Conf[:cache_dir]) do |f|
-				File.delete(Conf.file(f)) if f =~ /^.*\.(md5|site)$/
-			end
-			# special files
-			cache_file = Conf.file('cache.yml')
-			WCC.logger.warn "Removing timestamp cache..."
-			File.delete(cache_file) if File.exists?(cache_file)
-			stats_file = Conf.file('stats.yml')
-			WCC.logger.warn "Removing stats file..."
-			File.delete(stats_file) if File.exists?(stats_file)
-			Prog.exit 1
-		end
-
-		def self.load_timestamps
-			cache_file = Conf.file('cache.yml')
-			@@timestamps = {}
-			if File.exists?(cache_file)
-				WCC.logger.debug "Load timestamps from '#{cache_file}'"
-				# may be *false* if file is empty
-				yaml = YAML.load_file(cache_file)
-				if not yaml
-					WCC.logger.warn "No timestamps loaded"
+		def self.handle_http_errors(res, site)
+			return false if res.kind_of?(Net::HTTPOK)
+			if res.kind_of?(Net::HTTPMovedPermanently)
+				loc = res['Location']
+				if loc.nil?
+					WCC.logger.error "Site #{site.uri.to_s} moved permanently, skippong it - no new location given."
 				else
-					@@timestamps = yaml['timestamps']
+					WCC.logger.error "Site #{site.uri.to_s} moved permanently to '#{loc}', skipping it - please update your conf.yml adequately!"
 				end
+				return true
+			elsif res.kind_of?(Net::HTTPSeeOther) or res.kind_of?(Net::HTTPTemporaryRedirect)
+				loc = URI.parse(res['Location'])
+				WCC.logger.warn "Redirect: requesting '#{loc.to_s}'"
+				res = site.fetch_redirect(loc)
+				if not res.kind_of?(Net::HTTPOK)
+					WCC.logger.error "Redirected site #{loc.to_s} returned #{res.code} code, skipping it."
+					WCC.logger.error "Headers: #{res.to_hash.inspect}"
+					return true
+				end
+			elsif res.kind_of?(Net::HTTPUnauthorized)
+				WCC.logger.error "Site #{site.uri.to_s} demands authentication for '#{res['www-authenticate']}', skipping it - consider using 'auth:' option in your conf.yml."
+				return true
+			elsif res.kind_of?(Net::HTTPNotFound)
+				WCC.logger.error "Site #{site.uri.to_s} not found, skipping it."
+				return true
+			elsif res.kind_of?(Net::HTTPForbidden)
+				WCC.logger.error "Site #{site.uri.to_s} forbids access, skipping it."
+				return true
+			elsif res.kind_of?(Net::HTTPInternalServerError)
+				WCC.logger.error "Site #{site.uri.to_s} has internal errors, skipping it."
+				return true
+			elsif res.kind_of?(Net::HTTPServiceUnavailable)
+				#retry_after = res['Retry-After']
+				WCC.logger.warn "Site #{site.uri.to_s} currently not available, skipping it."
+				return true
+			else
+				WCC.logger.error "Site #{site.uri.to_s} returned #{res.code} code, skipping it."
+				WCC.logger.error "Headers: #{res.to_hash.inspect}"
+				return true
 			end
 		end
 
-		def self.save_timestamps
-			cache_file = Conf.file('cache.yml')
-			File.open(cache_file, 'w+') do |f| YAML.dump({"timestamps" => @@timestamps}, f) end
-		end
-
-		def self.update_stats
-			stats_file = Conf.file('stats.yml')
-			if File.exists?(stats_file)
-				WCC.logger.debug "Load stats from '#{stats_file}'"
-				yaml = YAML.load_file(stats_file)
-				if not yaml
-					WCC.logger.warn "No stats loaded"
-				else
-					# merge stats infos
-					@@stats.each do |k,v| @@stats[k] += yaml['stats'][k] end
-				end
-			end
-			File.open(stats_file, 'w+') do |f| YAML.dump({"stats" => @@stats}, f) end
-		end
-		
-		# Attempts to read the named template file from template.d
-		# and converts it into ERB.
-		#
-		# @param [String] name file name of template file
-		# @return [ERB] the ERB template or nil when file not found
-		def self.load_template(name)
-			t_path = File.join(Conf[:template_dir], name)
-			if File.exists?(t_path)
-				WCC.logger.debug "Load template '#{name}'"
-				t = File.open(t_path, 'r') { |f| f.read }
-				# <> omit newline for lines starting with <% and ending in %>
-				return ERB.new(t, 0, "<>")
+		def self.get_utf8_body(res, site)
+			# detect encoding from http header, meta element, default utf-8
+			# do not use utf-8 regex because it will fail on non utf-8 pages
+			encoding = (res['content-type'].to_s.match(/;\s*charset=([A-Za-z0-9-]*)/i).to_a[1] || 
+						res.body.match(/<meta.*charset=([a-zA-Z0-9-]*).*/i).to_a[1]).to_s.downcase || 'utf-8'
+			WCC.logger.info "Encoding is '#{encoding}'"
+			# convert to utf-8
+			begin
+				return Iconv.conv('utf-8', encoding, res.body)
+			rescue => ex
+				WCC.logger.error "Cannot convert site #{site.uri.to_s} from '#{encoding}': #{ex.to_s}"
 			end
 			nil
-		end
-		
-		# Attempts to write the given raw content to the named template file
-		# in template.d. This should be used to create initial template files on demand
-		# and will work only when file does not already exist.
-		#
-		# @param [String] name file name of template file
-		# @param [String] raw_content content that should be written to template file
-		def self.save_template(name, raw_content)
-			t_path = File.join(Conf[:template_dir], name)
-			if File.exists?(t_path)
-				WCC.logger.warn "Trying to save template '#{name}' which already exists!"
-				return
-			end
-			WCC.logger.info "Save template '#{name}' to #{t_path}"
-			File.open(t_path, 'w') { |f| f.write(raw_content) }
-		end
-		
-		# Central exit function, allows wcc a clean shutdown.
-		def self.exit(errno)
-			Kernel::exit errno
-		end
-		
-		private
-		
-		def self.get_timestamp(site)
-			@@timestamps[site.uri.to_s] || 0
-		end
-		
-		def self.update_timestamp(site, t)
-			@@timestamps[site.uri.to_s] = t
 		end
 	end
 end
