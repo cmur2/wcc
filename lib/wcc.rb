@@ -386,25 +386,21 @@ module WCC
 			# do not try diff or anything if site was never checked before
 			if site.new?
 				site.hash, site.content = new_hash, new_content
-				
-				# signal that no diff was posible
-				diff = nil
+				diff = nil # no diff possible
 			else
 				# save old site to tmp file
-				old_site_file = Tempfile.new("wcc-#{site.id}-")
-				old_site_file.write(site.content)
-				old_site_file.close
-				
-				# calculate labels before updating
-				old_label = "OLD (%s)" % File.mtime(Conf.file(site.id + ".md5")).strftime(DIFF_TIME_FMT)
+				old_site_file_path = Tempfile.open("wcc-#{site.id}-") do |f|
+					f.write(site.content)
+					f.path
+				end
+				old_label = "OLD (%s)" % File.mtime(Conf.file(site.id + '.md5')).strftime(DIFF_TIME_FMT)
 				new_label = "NEW (%s)" % Time.now.strftime(DIFF_TIME_FMT)
-			
+				# save new site
 				site.hash, site.content = new_hash, new_content
-				
 				# diff between OLD and NEW
-				diff = %x[diff -U 1 --label "#{old_label}" --label "#{new_label}" #{old_site_file.path} #{Conf.file(site.id + '.site')}]
+				diff = %x[diff -U 1 --label "#{old_label}" --label "#{new_label}" #{old_site_file_path} #{Conf.file(site.id + '.site')}]
 			end
-			
+
 			# construct the data made available to filters and templates
 			data = OpenStruct.new
 			data.site = site
