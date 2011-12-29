@@ -435,57 +435,28 @@ module WCC
 
 		# main
 		def self.run!
-			# first use of Conf initializes it
+			# make sure logger is correctly configured
 			WCC.logger = Logger.new(STDOUT)
 			
-			# make sure logger is correctly configured
+			# first use of Conf initializes it
 			Conf.instance
 			
 			# create cache dir for hash and diff files
 			Dir.mkdir(Conf[:cache_dir]) unless File.directory?(Conf[:cache_dir])
 			
-			if(Conf[:clean])
-				WCC.logger.warn "Removing hash and diff files..."
-				Dir.foreach(Conf[:cache_dir]) do |f|
-					File.delete(Conf.file(f)) if f =~ /^.*\.(md5|site)$/
-				end
-				# special files
-				cache_file = Conf.file('cache.yml')
-				WCC.logger.warn "Removing timestamp cache..."
-				File.delete(cache_file) if File.exists?(cache_file)
-				stats_file = Conf.file('stats.yml')
-				WCC.logger.warn "Removing stats file..."
-				File.delete(stats_file) if File.exists?(stats_file)
-				Prog.exit 1
-			end
+			clean_cache_dir if Conf[:clean]
 			
 			# read filter.d
 			Dir[File.join(Conf[:filter_dir], '*.rb')].each { |file| require file }
 			
-			# timestamps
-			cache_file = Conf.file('cache.yml')
-			@@timestamps = {}
-			if File.exists?(cache_file)
-				WCC.logger.debug "Load timestamps from '#{cache_file}'"
-
-				# may be *false* if file is empty
-				yaml = YAML.load_file(cache_file)
-
-				if not yaml
-					WCC.logger.warn "No timestamps loaded"
-				else
-					@@timestamps = yaml['timestamps']
-				end
-			end
+			load_timestamps
 			
 			# stats
 			@@stats = {
-				'nruns' => 0,
+				'nruns' => 1,
 				'nsites' => 0, 'nnotifications' => 0, 'nerrors' => 0,
 				'nlines' => 0, 'nhunks' => 0
 			}
-
-			@@stats['nruns'] += 1;
 			
 			Conf.sites.each do |site|
 				ts_old = get_timestamp(site)
@@ -507,30 +478,64 @@ module WCC
 				update_timestamp(site, ts_new)
 			end
 			
-			# save timestamps
-			File.open(cache_file, 'w+') do |f| YAML.dump({"timestamps" => @@timestamps}, f) end
-			
-			# save stats
-			stats_file = Conf.file('stats.yml')
-			if Conf[:stats]
-				if File.exists?(stats_file)
-					WCC.logger.debug "Load stats from '#{stats_file}'"
-					yaml = YAML.load_file(stats_file)
-					if not yaml
-						WCC.logger.warn "No stats loaded"
-					else
-						stats = yaml['stats']
-						@@stats.each do |k,v| @@stats[k] += stats[k] end
-					end
-				end
-				File.open(stats_file, 'w+') do |f| YAML.dump({"stats" => @@stats}, f) end
-			end
+			save_timestamps
+			update_stats if Conf[:stats]
 			
 			# shut down notificators
 			Notificators.mappings.each do |name,klass|
 				WCC.logger.debug "Shut down #{klass}"
 				klass.shut_down
 			end
+		end
+
+		def self.clean_cache_dir
+			WCC.logger.warn "Removing hash and diff files..."
+			Dir.foreach(Conf[:cache_dir]) do |f|
+				File.delete(Conf.file(f)) if f =~ /^.*\.(md5|site)$/
+			end
+			# special files
+			cache_file = Conf.file('cache.yml')
+			WCC.logger.warn "Removing timestamp cache..."
+			File.delete(cache_file) if File.exists?(cache_file)
+			stats_file = Conf.file('stats.yml')
+			WCC.logger.warn "Removing stats file..."
+			File.delete(stats_file) if File.exists?(stats_file)
+			Prog.exit 1
+		end
+
+		def self.load_timestamps
+			cache_file = Conf.file('cache.yml')
+			@@timestamps = {}
+			if File.exists?(cache_file)
+				WCC.logger.debug "Load timestamps from '#{cache_file}'"
+				# may be *false* if file is empty
+				yaml = YAML.load_file(cache_file)
+				if not yaml
+					WCC.logger.warn "No timestamps loaded"
+				else
+					@@timestamps = yaml['timestamps']
+				end
+			end
+		end
+
+		def self.save_timestamps
+			cache_file = Conf.file('cache.yml')
+			File.open(cache_file, 'w+') do |f| YAML.dump({"timestamps" => @@timestamps}, f) end
+		end
+
+		def self.update_stats
+			stats_file = Conf.file('stats.yml')
+			if File.exists?(stats_file)
+				WCC.logger.debug "Load stats from '#{stats_file}'"
+				yaml = YAML.load_file(stats_file)
+				if not yaml
+					WCC.logger.warn "No stats loaded"
+				else
+					# merge stats infos
+					@@stats.each do |k,v| @@stats[k] += yaml['stats'][k] end
+				end
+			end
+			File.open(stats_file, 'w+') do |f| YAML.dump({"stats" => @@stats}, f) end
 		end
 		
 		# Attempts to read the named template file from template.d
