@@ -63,6 +63,7 @@ module WCC
 		end
 
 		def handle_http_errors(res)
+			return false if res.kind_of?(Net::HTTPOK)
 			if res.kind_of?(Net::HTTPMovedPermanently)
 				loc = res['Location']
 				if loc.nil?
@@ -101,7 +102,6 @@ module WCC
 				WCC.logger.error "Headers: #{res.to_hash.inspect}"
 				return true
 			end
-			false
 		end
 
 		private
