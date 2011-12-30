@@ -570,7 +570,7 @@ module WCC
 			if res.kind_of?(Net::HTTPMovedPermanently)
 				loc = res['Location']
 				if loc.nil?
-					WCC.logger.error "Site #{site.uri.to_s} moved permanently, skippong it - no new location given."
+					WCC.logger.error "Site #{site.uri.to_s} moved permanently, skipping it - no new location given."
 				else
 					WCC.logger.error "Site #{site.uri.to_s} moved permanently to '#{loc}', skipping it - please update your conf.yml adequately!"
 				end
@@ -588,17 +588,17 @@ module WCC
 				WCC.logger.error "Site #{site.uri.to_s} demands authentication for '#{res['www-authenticate']}', skipping it - consider using 'auth:' option in your conf.yml."
 				return true
 			elsif res.kind_of?(Net::HTTPNotFound)
-				WCC.logger.error "Site #{site.uri.to_s} not found, skipping it."
+				WCC.logger.error "Site #{site.uri.to_s} not found (404), skipping it."
 				return true
 			elsif res.kind_of?(Net::HTTPForbidden)
-				WCC.logger.error "Site #{site.uri.to_s} forbids access, skipping it."
+				WCC.logger.error "Site #{site.uri.to_s} forbids access (403), skipping it."
 				return true
 			elsif res.kind_of?(Net::HTTPInternalServerError)
-				WCC.logger.error "Site #{site.uri.to_s} has internal errors, skipping it."
+				WCC.logger.error "Site #{site.uri.to_s} has internal errors (500), skipping it."
 				return true
 			elsif res.kind_of?(Net::HTTPServiceUnavailable)
 				#retry_after = res['Retry-After']
-				WCC.logger.warn "Site #{site.uri.to_s} currently not available, skipping it."
+				WCC.logger.warn "Site #{site.uri.to_s} currently not available (503), skipping it."
 				return true
 			else
 				WCC.logger.error "Site #{site.uri.to_s} returned #{res.code} code, skipping it."
