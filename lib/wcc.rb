@@ -611,7 +611,7 @@ module WCC
 			# detect encoding from http header, meta element, default utf-8
 			# do not use utf-8 regex because it will fail on non utf-8 pages
 			encoding = (res['content-type'].to_s.match(/;\s*charset=([A-Za-z0-9-]*)/i).to_a[1] || 
-						res.body.match(/<meta.*charset=([a-zA-Z0-9-]*).*/i).to_a[1]).to_s.downcase || 'utf-8'
+						res.body.match(/<meta.*charset="?([a-zA-Z0-9-]*).*/i).to_a[1]).to_s.downcase || 'utf-8'
 			WCC.logger.info "Encoding is '#{encoding}'"
 			# convert to utf-8
 			begin
