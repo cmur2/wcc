@@ -142,7 +142,7 @@ module WCC
 		end
 		
 		def ncharsc
-			@di.inject(0) { |sum,o| sum += (o.hilite.nil? ? 0 : o.hilite.nitems) }
+			@di.inject(0) { |sum,o| sum += (o.hilite.nil? ? 0 : o.hilite.select { |e| not e.nil? }.size) }
 		end
 		
 		def rchar
